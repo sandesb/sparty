@@ -47,7 +47,7 @@ function initState() {
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400;1,600;1,700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -63,7 +63,7 @@ const GlobalStyles = () => (
       --reward:   #f0d060;
       --text:     #e8e8f0;
       --text2:    #888898;
-      --font-display: 'Playfair Display', Georgia, serif;
+      --font-display: 'Nunito', sans-serif;
       --font-mono:    'DM Mono', monospace;
       --radius: 16px;
     }
@@ -75,14 +75,14 @@ const GlobalStyles = () => (
     .login-card { width:380px; padding:52px 44px; background:var(--surface); border:1px solid var(--border); border-radius:24px; display:flex; flex-direction:column; gap:24px; }
     .login-logo { display:flex; flex-direction:column; align-items:center; gap:14px; }
     .logo-ring { width:68px; height:68px; border-radius:50%; border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; background:rgba(200,240,96,0.05); }
-    .login-logo h1 { font-size:30px; font-weight:800; letter-spacing:-0.5px; font-style:italic; }
+    .login-logo h1 { font-size:30px; font-weight:800; letter-spacing:-0.5px;  ; }
     .login-logo span { font-size:11px; color:var(--text2); font-family:var(--font-mono); letter-spacing:2.5px; }
     .login-field { display:flex; flex-direction:column; gap:8px; }
     .login-field label { font-size:11px; color:var(--text2); font-family:var(--font-mono); letter-spacing:1.5px; }
     .login-field input { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:13px 16px; color:var(--text); font-family:var(--font-mono); font-size:14px; outline:none; transition:border-color .2s; width:100%; }
     .login-field input:focus { border-color:var(--accent); }
     .login-hint { font-family:var(--font-mono); font-size:11px; color:var(--text2); text-align:center; line-height:1.7; }
-    .login-btn { padding:15px; background:var(--accent); color:#0a0a0c; border:none; border-radius:12px; font-family:var(--font-display); font-weight:700; font-size:16px; cursor:pointer; font-style:italic; transition:opacity .2s,transform .1s; }
+    .login-btn { padding:15px; background:var(--accent); color:#0a0a0c; border:none; border-radius:12px; font-family:var(--font-display); font-weight:700; font-size:16px; cursor:pointer;  ; transition:opacity .2s,transform .1s; }
     .login-btn:hover { opacity:.9; }
     .login-btn:active { transform:scale(.98); }
     .login-error { font-family:var(--font-mono); font-size:12px; color:var(--danger); text-align:center; }
@@ -90,7 +90,7 @@ const GlobalStyles = () => (
     /* HEADER */
     .header { display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-bottom:1px solid var(--border); background:var(--surface); }
     .header-left { display:flex; align-items:center; gap:14px; }
-    .header-title { font-size:24px; font-weight:800; letter-spacing:-0.5px; font-style:italic; }
+    .header-title { font-size:24px; font-weight:800; letter-spacing:-0.5px;  ; }
     .header-sub { font-family:var(--font-mono); font-size:10px; color:var(--text2); letter-spacing:2px; margin-top:2px; }
     .badge { padding:4px 12px; border-radius:20px; font-size:10px; font-family:var(--font-mono); font-weight:500; letter-spacing:1.5px; }
     .badge-user  { background:rgba(200,240,96,.1);  color:var(--accent);  border:1px solid rgba(200,240,96,.2); }
@@ -111,21 +111,21 @@ const GlobalStyles = () => (
     .circle-section { display:flex; flex-direction:column; align-items:center; gap:28px; padding:36px 28px; }
     .circle-wrap { position:relative; display:flex; align-items:center; justify-content:center; }
     .circle-inner { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; text-align:center; }
-    .circle-main-val { font-size:32px; font-weight:800; letter-spacing:-2px; line-height:1; font-style:italic; }
+    .circle-main-val { font-size:32px; font-weight:800; letter-spacing:1px; line-height:1; }
     .circle-main-label { font-family:var(--font-mono); font-size:9px; color:var(--text2); letter-spacing:2px; margin-top:6px; }
     .circle-sub { font-size:12px; color:var(--text2); font-family:var(--font-mono); margin-top:2px; }
     .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; width:100%; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
     .stat-item { padding:14px 16px; display:flex; flex-direction:column; gap:4px; border-right:1px solid var(--border); }
     .stat-item:last-child { border-right:none; }
     .stat-lbl { font-family:var(--font-mono); font-size:9px; color:var(--text2); letter-spacing:1.2px; }
-    .stat-val { font-size:17px; font-weight:700; font-style:italic; }
+    .stat-val { font-size:17px; font-weight:700;  ; }
 
     /* WITHDRAW */
     .withdraw-section { display:flex; flex-direction:column; gap:14px; }
     .withdraw-input-row { display:flex; gap:10px; }
     .withdraw-input { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:13px 16px; color:var(--text); font-family:var(--font-mono); font-size:16px; outline:none; transition:border-color .2s; }
     .withdraw-input:focus { border-color:var(--accent); }
-    .withdraw-btn { padding:13px 22px; background:var(--accent); color:#0a0a0c; border:none; border-radius:10px; font-family:var(--font-display); font-weight:700; font-size:15px; cursor:pointer; white-space:nowrap; font-style:italic; transition:opacity .2s,transform .1s; }
+    .withdraw-btn { padding:13px 22px; background:var(--accent); color:#0a0a0c; border:none; border-radius:10px; font-family:var(--font-display); font-weight:700; font-size:15px; cursor:pointer; white-space:nowrap;  ; transition:opacity .2s,transform .1s; }
     .withdraw-btn:hover { opacity:.9; }
     .withdraw-btn:active { transform:scale(.98); }
     .withdraw-btn:disabled { opacity:.3; cursor:not-allowed; }
@@ -151,10 +151,10 @@ const GlobalStyles = () => (
     }
     .reward-banner-icon { width:52px; height:52px; border-radius:50%; background:rgba(240,208,96,0.12); border:2px solid rgba(240,208,96,0.3); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .reward-banner-body { flex:1; }
-    .reward-banner-title { font-size:18px; font-weight:800; font-style:italic; color:var(--reward); margin-bottom:4px; }
+    .reward-banner-title { font-size:18px; font-weight:800;  ; color:var(--reward); margin-bottom:4px; }
     .reward-banner-sub { font-family:var(--font-mono); font-size:11px; color:var(--text2); line-height:1.7; }
-    .reward-banner-amount { font-size:32px; font-weight:800; font-style:italic; color:var(--reward); letter-spacing:-1px; text-align:right; flex-shrink:0; }
-    .reward-claim-btn { display:flex; align-items:center; gap:8px; padding:12px 22px; background:var(--reward); color:#0a0a0c; border:none; border-radius:10px; font-family:var(--font-display); font-weight:700; font-size:14px; cursor:pointer; font-style:italic; margin-top:12px; transition:opacity .2s,transform .1s; white-space:nowrap; }
+    .reward-banner-amount { font-size:32px; font-weight:800;  ; color:var(--reward); letter-spacing:-1px; text-align:right; flex-shrink:0; }
+    .reward-claim-btn { display:flex; align-items:center; gap:8px; padding:12px 22px; background:var(--reward); color:#0a0a0c; border:none; border-radius:10px; font-family:var(--font-display); font-weight:700; font-size:14px; cursor:pointer;  ; margin-top:12px; transition:opacity .2s,transform .1s; white-space:nowrap; }
     .reward-claim-btn:hover { opacity:.9; }
     .reward-claim-btn:active { transform:scale(.97); }
 
@@ -190,22 +190,22 @@ const GlobalStyles = () => (
     .tr-month-end td { background:rgba(240,208,96,0.03); }
 
     /* SECTION TITLE */
-    .section-title { font-size:13px; font-weight:700; letter-spacing:.3px; margin-bottom:20px; display:flex; align-items:center; gap:8px; font-style:italic; }
+    .section-title { font-size:13px; font-weight:700; letter-spacing:.3px; margin-bottom:20px; display:flex; align-items:center; gap:8px;  ; }
     .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
 
     /* TABS */
     .tabs { display:flex; gap:4px; background:var(--surface2); padding:4px; border-radius:12px; margin-bottom:24px; }
-    .tab { flex:1; padding:10px; text-align:center; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; letter-spacing:.3px; border:none; transition:all .2s; background:transparent; color:var(--text2); font-family:var(--font-display); font-style:italic; }
+    .tab { flex:1; padding:10px; text-align:center; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; letter-spacing:.3px; border:none; transition:all .2s; background:transparent; color:var(--text2); font-family:var(--font-display);  ; }
     .tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.4); }
 
     /* ADMIN */
     .admin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
     .admin-stat { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:20px; }
-    .admin-stat-val { font-size:22px; font-weight:800; margin-top:6px; font-style:italic; }
+    .admin-stat-val { font-size:22px; font-weight:800; margin-top:6px;  ; }
 
     /* SIM PANEL */
     .sim-panel { background:rgba(176,96,240,.04); border:1px solid rgba(176,96,240,.2); border-radius:var(--radius); padding:24px 28px; margin-bottom:28px; }
-    .sim-title { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700; font-style:italic; color:var(--sim); margin-bottom:6px; }
+    .sim-title { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700;  ; color:var(--sim); margin-bottom:6px; }
     .sim-rule { height:1px; background:rgba(176,96,240,.15); margin:0 0 16px; }
     .sim-subtitle { font-family:var(--font-mono); font-size:11px; color:var(--text2); margin-bottom:18px; line-height:1.7; }
     .sim-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
@@ -253,7 +253,7 @@ const GlobalStyles = () => (
     /* REWARD SCENARIOS */
     .reward-scenarios { display:flex; flex-direction:column; gap:10px; }
     .scenario-row { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background:var(--surface2); border-radius:10px; border:1px solid var(--border); }
-    .scenario-spend { font-size:14px; font-weight:600; font-style:italic; }
+    .scenario-spend { font-size:14px; font-weight:600;  ; }
     .scenario-pct { font-family:var(--font-mono); font-size:11px; color:var(--text2); background:var(--surface); padding:4px 10px; border-radius:20px; }
     .divider { height:1px; background:var(--border); margin:24px 0; }
 
@@ -736,13 +736,13 @@ export default function App() {
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:16 }}>
                       <div>
                         <div className="card-label">PROJECTED BONUS</div>
-                        <div style={{ fontSize:28, fontWeight:800, fontStyle:"italic", letterSpacing:-1, color: monthReward >= 3000 ? "var(--accent)" : monthReward >= 1500 ? "var(--warn)" : "var(--danger)" }}>
+                        <div style={{ fontSize:28, fontWeight:800,   letterSpacing:-1, color: monthReward >= 3000 ? "var(--accent)" : monthReward >= 1500 ? "var(--warn)" : "var(--danger)" }}>
                           Rs.{monthReward.toLocaleString()}
                         </div>
                       </div>
                       <div style={{ textAlign:"right" }}>
                         <div className="card-label">EFFICIENCY</div>
-                        <div style={{ fontSize:28, fontWeight:800, fontStyle:"italic", letterSpacing:-1, color:"var(--accent2)" }}>{monthRewardPct}%</div>
+                        <div style={{ fontSize:28, fontWeight:800,   letterSpacing:-1, color:"var(--accent2)" }}>{monthRewardPct}%</div>
                       </div>
                     </div>
 
@@ -881,7 +881,7 @@ export default function App() {
                           const mr = state.monthRewards[row.month];
                           return (
                             <tr key={row.month} className="month-ledger-row-complete">
-                              <td style={{ fontWeight:700, fontStyle:"italic", fontFamily:"var(--font-mono)" }}>M{row.month}</td>
+                              <td style={{ fontWeight:700,   fontFamily:"var(--font-mono)" }}>M{row.month}</td>
                               {mw.map(w => (
                                 <td key={w.week} className={w.withdrawn <= 1500 ? "td-accent" : w.withdrawn < WEEKLY_ALLOW ? "td-warn" : "td-muted"}
                                   style={{ fontFamily:"var(--font-mono)" }}>
@@ -910,7 +910,7 @@ export default function App() {
 
                         {/* Current month (in progress) */}
                         <tr className="month-ledger-row-active">
-                          <td style={{ fontWeight:700, fontStyle:"italic", fontFamily:"var(--font-mono)", color:"var(--accent2)" }}>M{currentMonth} ◀</td>
+                          <td style={{ fontWeight:700,   fontFamily:"var(--font-mono)", color:"var(--accent2)" }}>M{currentMonth} ◀</td>
                           {monthWeeks.map(w => (
                             <td key={w.week} style={{ fontFamily:"var(--font-mono)", color: w.week===cw?"var(--accent2)":"var(--text2)" }}>
                               {w.completed || w.week===cw ? `Rs.${w.withdrawn.toLocaleString()}` : "—"}
@@ -938,7 +938,7 @@ export default function App() {
                     ].map(item => (
                       <div key={item.label} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:10, padding:"16px 18px" }}>
                         <div className="card-label">{item.label}</div>
-                        <div style={{ fontSize:20, fontWeight:800, fontStyle:"italic", color:item.color, marginTop:4 }}>{item.val}</div>
+                        <div style={{ fontSize:20, fontWeight:800,   color:item.color, marginTop:4 }}>{item.val}</div>
                       </div>
                     ))}
                   </div>
@@ -1121,7 +1121,7 @@ export default function App() {
                         );
                       })}
                       <tr style={{ borderTop:"1px solid var(--border)" }}>
-                        <td style={{ fontFamily:"var(--font-mono)", fontWeight:700, fontStyle:"italic" }}>6-Mo Total</td>
+                        <td style={{ fontFamily:"var(--font-mono)", fontWeight:700}}>6-Mo Total</td>
                         <td colSpan={4} style={{ fontFamily:"var(--font-mono)", color:"var(--text2)", fontSize:11 }}>All weeks @ Rs.1,500</td>
                         <td className="td-warn"   style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.36,000</td>
                         <td className="td-reward" style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.24,000</td>
