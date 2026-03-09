@@ -665,8 +665,8 @@ export default function App() {
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {simActive && <span className="badge badge-sim">SIM · W{cw} M{currentMonth}</span>}
-            <span className={`badge ${user === "admin" ? "badge-admin" : "badge-user"}`}>
-              {user === "admin" ? "ADMIN" : tx("USER", "प्रयोगकर्ता")}
+            <span className={`badge ${user === "admin" ? "badge-admin" : "badge-user"}`} style={user === "user" ? { display:"inline-flex", alignItems:"center", gap:6, fontSize:14, fontWeight:700 } : {}}>
+              {user === "admin" ? "ADMIN" : <>Hi, Dilip <ScanFace size={15} /></>}
             </span>
             {user === "admin" && (
               <button className="logout-btn" onClick={() => { setUser("user"); setLoginPin(""); setShowAdminLogin(false); }}>
