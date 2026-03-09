@@ -3,7 +3,7 @@ import {
   Lock, TrendingUp, Clock, LogOut, Shield, BarChart2,
   Gift, AlertCircle, CheckCircle, Calendar, FastForward,
   SkipForward, RotateCcw, FlaskConical, Sparkles, PartyPopper,
-  Wallet, ArrowDownToLine, Landmark
+  Wallet, ArrowDownToLine, Landmark, ScanFace
 } from "lucide-react";
 import { supabaseSelect, supabaseUpsert } from "./utils/supabaseClient";
 
@@ -349,8 +349,7 @@ function useCountdown(overrideDate) {
 export default function App() {
   const [user,          setUser]          = useState("user"); // start in user view (bypass login)
   const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [loginUser,     setLoginUser]     = useState("");
-  const [loginPass,     setLoginPass]     = useState("");
+  const [loginPin,      setLoginPin]      = useState("");
   const [loginErr,      setLoginErr]      = useState("");
   const [state,      setState]      = useState(initState);
   const [withdrawAmt,setWithdrawAmt]= useState("");
@@ -422,21 +421,19 @@ export default function App() {
     })();
   }, [hydrated, showToast, state.weeks, state.totalWithdrawn, state.currentWeek, state.monthRewards, state.totalRewardsClaimed]);
 
-  // ── AUTH ── (admin login only when opened via Admin button)
+  const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN ?? "0544";
+
+  // ── AUTH ── (admin login only when opened via Admin button; PIN from .env)
   function handleLogin() {
     if (showAdminLogin) {
-      if (loginUser === "admin" && loginPass === "admin") {
+      if (loginPin === String(ADMIN_PIN)) {
         setUser("admin");
         setLoginErr("");
         setShowAdminLogin(false);
-        setLoginUser("");
-        setLoginPass("");
-      } else setLoginErr("Invalid — use admin / admin");
+        setLoginPin("");
+      } else setLoginErr("Invalid PIN");
       return;
     }
-    if (loginUser === "admin" && loginPass === "admin") { setUser("admin"); setLoginErr(""); }
-    else if (loginUser === "user" && loginPass === "user") { setUser("user"); setLoginErr(""); }
-    else setLoginErr("Invalid — try user/user or admin/admin");
   }
 
   // ── WITHDRAW ──
@@ -608,19 +605,13 @@ export default function App() {
             <span>ADMIN ACCESS</span>
           </div>
           <div className="login-field">
-            <label>USERNAME</label>
-            <input value={loginUser} onChange={e => setLoginUser(e.target.value)}
-              placeholder="Enter username" onKeyDown={e => e.key === "Enter" && handleLogin()} autoFocus />
-          </div>
-          <div className="login-field">
-            <label>PASSWORD</label>
-            <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)}
-              placeholder="••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            <label>PIN</label>
+            <input type="password" inputMode="numeric" value={loginPin} onChange={e => setLoginPin(e.target.value)}
+              placeholder="Enter PIN" onKeyDown={e => e.key === "Enter" && handleLogin()} autoFocus maxLength={6} />
           </div>
           {loginErr && <div className="login-error">{loginErr}</div>}
           <button className="login-btn" onClick={handleLogin}>Enter the Vault</button>
-          <div className="login-hint">admin / admin</div>
-          <button type="button" onClick={() => { setShowAdminLogin(false); setLoginErr(""); setLoginUser(""); setLoginPass(""); }}
+          <button type="button" onClick={() => { setShowAdminLogin(false); setLoginErr(""); setLoginPin(""); }}
             style={{ background: "transparent", border: "none", color: "var(--text2)", fontFamily: "var(--font-mono)", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
             Cancel
           </button>
@@ -637,7 +628,7 @@ export default function App() {
 
         {/* Toast */}
         {toast && (
-          <div style={{ position:"fixed", top:20, right:20, zIndex:9999, padding:"13px 20px", borderRadius:12,
+          <div style={{ position:"fixed", left:"50%", top:"50%", transform:"translate(-50%, -50%)", zIndex:9999, padding:"13px 20px", borderRadius:12,
             background: toast.type === "success" ? "rgba(200,240,96,.1)" : "rgba(240,160,96,.08)",
             border:`1px solid ${toast.type === "success" ? "rgba(200,240,96,.3)" : "rgba(240,160,96,.3)"}`,
             color: toast.type === "success" ? "var(--accent)" : "var(--warn)",
@@ -651,9 +642,11 @@ export default function App() {
         {/* Header */}
         <div className="header">
           <div className="header-left">
-            <div style={{ width:40, height:40, borderRadius:"50%", border:"2px solid var(--accent)", display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,240,96,0.05)" }}>
+            <div
+              style={{ width:40, height:40, borderRadius:"50%", border:"2px solid var(--accent)", display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,240,96,0.05)", cursor:"pointer" }}
+              onDoubleClick={() => setShowAdminLogin(true)}
+            >
               <Landmark size={16} color="var(--accent)" />
-              
             </div>
             <div>
               <div className="header-title">Sparty</div>
@@ -662,15 +655,14 @@ export default function App() {
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {simActive && <span className="badge badge-sim">SIM · W{cw} M{currentMonth}</span>}
-            <span className={`badge ${user === "admin" ? "badge-admin" : "badge-user"}`}>
-              {user === "admin" ? "ADMIN" : "USER"}
+            <span className={`badge ${user === "admin" ? "badge-admin" : "badge-user"}`} style={user === "user" ? { display:"inline-flex", alignItems:"center", gap:6, fontSize:13, fontWeight:700 } : {}}>
+              {user === "admin" ? "ADMIN" : <>Hi, Dilip <ScanFace size={14} /></>}
             </span>
-            <button type="button" className="logout-btn" onClick={() => setShowAdminLogin(true)}>
-              Admin
-            </button>
-            <button className="logout-btn" onClick={() => { setUser("user"); setLoginUser(""); setLoginPass(""); setShowAdminLogin(false); }}>
-              <LogOut size={13}/> Sign out
-            </button>
+            {user === "admin" && (
+              <button className="logout-btn" onClick={() => { setUser("user"); setLoginPin(""); setShowAdminLogin(false); }}>
+                <LogOut size={13}/> Sign out
+              </button>
+            )}
           </div>
         </div>
 
@@ -821,7 +813,7 @@ export default function App() {
                       <span className="stat-val" style={{ color:"var(--accent)" }}>Rs.{weekRemaining.toLocaleString()}</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-lbl">SAVED THIS WK</span>
+                      <span className="stat-lbl">SAVED THIS WEEK</span>
                       <span className="stat-val" style={{ color: weekWithdrawn <= 1500 ? "var(--accent)" : "var(--warn)" }}>
                         Rs.{(WEEKLY_ALLOW - weekWithdrawn).toLocaleString()}
                       </span>
@@ -833,6 +825,20 @@ export default function App() {
                   </div>
 
                   <div className="withdraw-section" style={{ width:"100%" }}>
+                    <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+                      {[1000, 1500, 2000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          className="withdraw-btn"
+                          style={{ flex:1, minWidth:80, opacity: withdrawAmt === String(amt) ? 1 : 0.85, background:"rgba(96, 200, 240, 0.06)", border:"1px solid rgba(96, 200, 240, 0.18)", color:"var(--accent2)" }}
+                          onClick={() => { setWithdrawAmt(String(amt)); showToast(`Rs.${amt.toLocaleString()} selected`, "success"); }}
+                          disabled={weekRemaining <= 0}
+                        >
+                          Rs.{amt.toLocaleString()}
+                        </button>
+                      ))}
+                    </div>
                     <div className="withdraw-input-row">
                       <input className="withdraw-input" type="number" min={0} placeholder="Amount (0 to save for reward)"
                         value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
