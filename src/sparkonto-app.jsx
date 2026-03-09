@@ -5,6 +5,7 @@ import {
   SkipForward, RotateCcw, FlaskConical, Sparkles, PartyPopper,
   Wallet, ArrowDownToLine, Landmark
 } from "lucide-react";
+import { supabaseSelect, supabaseUpsert } from "./utils/supabaseClient";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const TOTAL_BUDGET   = 120000;
@@ -15,6 +16,7 @@ const WEEK_COUNT     = 52;
 const WEEKS_PER_MON  = 4;
 const MAX_MONTHLY    = WEEKLY_ALLOW * WEEKS_PER_MON; // 8000
 const STORAGE_KEY    = "sparkonto_state_v1";
+const SUPABASE_TABLE = "sparkonto_state";
 
 function calcReward(monthlySpend) {
   const lo = 6000, hi = MAX_MONTHLY;
@@ -354,7 +356,7 @@ export default function App() {
   const [withdrawAmt,setWithdrawAmt]= useState("");
   const [tab,        setTab]        = useState("dashboard");
   const [toast,      setToast]      = useState(null);
-  const [hydrated,   setHydrated]   = useState(false); // has localStorage load run?
+  const [hydrated,   setHydrated]   = useState(false); // has initial load from Supabase run?
 
   // sim
   const [simActive,  setSimActive]  = useState(false);
@@ -370,47 +372,55 @@ export default function App() {
   }, []);
 
   // ── PERSISTENCE ──
-  // Load from localStorage on first mount (if available)
+  // Load from Supabase on first mount (if available)
   useEffect(() => {
-    if (typeof window === "undefined" || !window.localStorage) return;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.weeks)) {
-        setState(prev => ({
-          ...prev,
-          weeks: parsed.weeks ?? prev.weeks,
-          totalWithdrawn: parsed.totalWithdrawn ?? prev.totalWithdrawn,
-          currentWeek: parsed.currentWeek ?? prev.currentWeek,
-          monthRewards: parsed.monthRewards ?? prev.monthRewards,
-          totalRewardsClaimed: parsed.totalRewardsClaimed ?? prev.totalRewardsClaimed,
-        }));
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await supabaseSelect(SUPABASE_TABLE, `id=eq.${encodeURIComponent(STORAGE_KEY)}`);
+        if (cancelled || !Array.isArray(rows) || rows.length === 0) {
+          setHydrated(true);
+          return;
+        }
+        const row = rows[0];
+        const data = row?.data;
+        if (data && Array.isArray(data.weeks)) {
+          setState(prev => ({
+            ...prev,
+            weeks: data.weeks ?? prev.weeks,
+            totalWithdrawn: data.totalWithdrawn ?? prev.totalWithdrawn,
+            currentWeek: data.currentWeek ?? prev.currentWeek,
+            monthRewards: data.monthRewards ?? prev.monthRewards,
+            totalRewardsClaimed: data.totalRewardsClaimed ?? prev.totalRewardsClaimed,
+          }));
+        }
+      } catch {
+        // ignore network / corrupt data
       }
-    } catch {
-      // ignore corrupt storage
-    }
-    setHydrated(true);
+      if (!cancelled) setHydrated(true);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Save core state to localStorage whenever it changes
+  // Save core state to Supabase whenever it changes (after hydration)
   useEffect(() => {
     if (!hydrated) return;
-    if (typeof window === "undefined" || !window.localStorage) return;
-    try {
-      const payload = {
-        version: 1,
-        weeks: state.weeks,
-        totalWithdrawn: state.totalWithdrawn,
-        currentWeek: state.currentWeek,
-        monthRewards: state.monthRewards,
-        totalRewardsClaimed: state.totalRewardsClaimed,
-      };
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch {
-      // ignore quota / access errors
-    }
-  }, [hydrated, state.weeks, state.totalWithdrawn, state.currentWeek, state.monthRewards, state.totalRewardsClaimed]);
+    const payload = {
+      version: 1,
+      weeks: state.weeks,
+      totalWithdrawn: state.totalWithdrawn,
+      currentWeek: state.currentWeek,
+      monthRewards: state.monthRewards,
+      totalRewardsClaimed: state.totalRewardsClaimed,
+    };
+    (async () => {
+      try {
+        await supabaseUpsert(SUPABASE_TABLE, { id: STORAGE_KEY, data: payload });
+      } catch {
+        showToast("Sync failed", "warn");
+      }
+    })();
+  }, [hydrated, showToast, state.weeks, state.totalWithdrawn, state.currentWeek, state.monthRewards, state.totalRewardsClaimed]);
 
   // ── AUTH ── (admin login only when opened via Admin button)
   function handleLogin() {
