@@ -668,12 +668,11 @@ export default function App() {
             <span className={`badge ${user === "admin" ? "badge-admin" : "badge-user"}`}>
               {user === "admin" ? "ADMIN" : tx("USER", "प्रयोगकर्ता")}
             </span>
-            <button type="button" className="logout-btn" onClick={() => setShowAdminLogin(true)}>
-              {tx("Admin", "एडमिन")}
-            </button>
-            <button className="logout-btn" onClick={() => { setUser("user"); setLoginUser(""); setLoginPass(""); setShowAdminLogin(false); }}>
-              <LogOut size={13}/> {tx("Sign out", "साइन आउट")}
-            </button>
+            {user === "admin" && (
+              <button className="logout-btn" onClick={() => { setUser("user"); setLoginPin(""); setShowAdminLogin(false); }}>
+                <LogOut size={13}/> {tx("Sign out", "साइन आउट")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -694,7 +693,7 @@ export default function App() {
             </button>
             {user === "user" && (
               <button className={`tab ${isNepali ? "active" : ""}`} onClick={() => setLang(prev => prev === "ne" ? "en" : "ne")}>
-                {isNepali ? "🇬🇧 English" : "🇳🇵 Nepali"}
+                {isNepali ? "English 🇬🇧" : "Nepali 🇳🇵"}
               </button>
             )}
           </div>
