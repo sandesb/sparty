@@ -938,7 +938,7 @@ export default function App() {
                       ))}
                     </div>
                     <div className="withdraw-input-row">
-                      <input className="withdraw-input" type="number" min={0} placeholder={tx("Amount (0 to save for reward)", "रकम (रिवार्डका लागि बचत गर्न 0)")}
+                      <input className="withdraw-input" type="number" min={0} placeholder={tx("Amount", "रकम ")}
                         value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && handleWithdraw()} max={weekRemaining} />
                       <button className="withdraw-btn" onClick={handleWithdraw} disabled={weekRemaining <= 0}>
