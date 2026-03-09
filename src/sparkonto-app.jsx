@@ -3,7 +3,8 @@ import {
   Lock, TrendingUp, Clock, LogOut, Shield, BarChart2,
   Gift, AlertCircle, CheckCircle, Calendar, FastForward,
   SkipForward, RotateCcw, FlaskConical, Sparkles, PartyPopper,
-  Wallet, ArrowDownToLine, Landmark, ScanFace
+  Wallet, ArrowDownToLine, Landmark, ScanFace,
+  Instagram, Youtube, Linkedin, Github
 } from "lucide-react";
 import { supabaseSelect, supabaseUpsert } from "./utils/supabaseClient";
 
@@ -350,6 +351,85 @@ function useCountdown(overrideDate) {
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
+// ─── SOCIAL LINKS ─────────────────────────────────────────────────────────────
+const SOCIAL_LINKS = [
+  { Icon: Instagram, href: "https://instagram.com/sandesb_",                                        label: "Instagram" },
+  { Icon: Youtube,   href: "https://www.youtube.com/@SandeshBajracharya",                           label: "YouTube"   },
+  { Icon: Linkedin,  href: "https://www.linkedin.com/in/sandesh-bajracharya-238104250/",            label: "LinkedIn"  },
+  { Icon: Github,    href: "https://github.com/sandesb",                                            label: "GitHub"    },
+];
+
+// ─── FOOTER ───────────────────────────────────────────────────────────────────
+function Footer() {
+  return (
+    <footer style={{
+      borderTop: "1px solid var(--border)",
+      background: "var(--surface)",
+      padding: "28px 32px",
+      marginTop: 40,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 16,
+    }}>
+      {/* Social links */}
+      <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap", justifyContent: "center" }}>
+        {SOCIAL_LINKS.map((link) => {
+          const SocialIcon = link.Icon;
+          return (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={link.label}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                color: "var(--text2)",
+                textDecoration: "none",
+                fontSize: "12px",
+                fontFamily: "var(--font-display)",
+                fontWeight: 600,
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--text2)"; }}
+            >
+              <SocialIcon size={18} />
+              <span>{link.label}</span>
+            </a>
+          );
+        })}
+      </div>
+
+      {/* Divider */}
+      <div style={{ width: "100%", maxWidth: 480, height: 1, background: "var(--border)" }} />
+
+      {/* Copyright */}
+      <div style={{
+        fontFamily: "var(--font-display)",
+        fontSize: 11,
+        color: "var(--text2)",
+        textAlign: "center",
+        lineHeight: 1.7,
+        letterSpacing: "0.5px",
+      }}>
+        <span style={{ opacity: 0.5 }}>Sparty™ 2026 · Created by </span>
+        <a
+          href="https://github.com/sandesb"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 700 }}
+        >
+          Sandesh Bajracharya
+        </a>
+      </div>
+    </footer>
+  );
+}
+
 export default function App() {
   const [user,          setUser]          = useState("user"); // start in user view (bypass login)
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -1441,6 +1521,7 @@ export default function App() {
           )}
         </div>
       </div>
+      <Footer />
     </>
   );
 }
