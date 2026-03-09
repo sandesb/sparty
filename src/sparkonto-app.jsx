@@ -50,7 +50,7 @@ function initState() {
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -72,6 +72,10 @@ const GlobalStyles = () => (
     }
     body { background: var(--bg); color: var(--text); font-family: var(--font-display); min-height: 100vh; overflow-x: hidden; }
     .app { min-height: 100vh; }
+    .app.lang-ne {
+      --font-display: 'Noto Sans Devanagari', sans-serif;
+      --font-mono: 'Noto Sans Devanagari', sans-serif;
+    }
 
     /* LOGIN */
     .login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse 60% 60% at 50% 30%, #1a1a2e 0%, var(--bg) 70%); }
@@ -355,6 +359,7 @@ export default function App() {
   const [state,      setState]      = useState(initState);
   const [withdrawAmt,setWithdrawAmt]= useState("");
   const [tab,        setTab]        = useState("dashboard");
+  const [lang,       setLang]       = useState("en");
   const [toast,      setToast]      = useState(null);
   const [hydrated,   setHydrated]   = useState(false); // has initial load from Supabase run?
 
@@ -365,6 +370,8 @@ export default function App() {
   const [simSpends,  setSimSpends]  = useState([2000, 2000, 2000, 2000]);
 
   const timer = useCountdown(simActive && simDT ? simDT : null);
+  const isNepali = user === "user" && lang === "ne";
+  const tx = useCallback((en, ne) => (isNepali ? ne : en), [isNepali]);
 
   const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
@@ -417,10 +424,10 @@ export default function App() {
       try {
         await supabaseUpsert(SUPABASE_TABLE, { id: STORAGE_KEY, data: payload });
       } catch {
-        showToast("Sync failed", "warn");
+        showToast(tx("Sync failed", "सिंक असफल भयो"), "warn");
       }
     })();
-  }, [hydrated, showToast, state.weeks, state.totalWithdrawn, state.currentWeek, state.monthRewards, state.totalRewardsClaimed]);
+  }, [hydrated, showToast, state.weeks, state.totalWithdrawn, state.currentWeek, state.monthRewards, state.totalRewardsClaimed, tx]);
 
   // ── AUTH ── (admin login only when opened via Admin button)
   function handleLogin() {
@@ -442,18 +449,18 @@ export default function App() {
   // ── WITHDRAW ──
   function handleWithdraw() {
     const amt = withdrawAmt === "" || withdrawAmt === null ? NaN : parseInt(withdrawAmt, 10);
-    if (isNaN(amt) || amt < 0) return showToast("Enter a valid amount", "warn");
+    if (isNaN(amt) || amt < 0) return showToast(tx("Enter a valid amount", "मान्य रकम प्रविष्ट गर्नुहोस्"), "warn");
     const wk        = state.weeks[state.currentWeek - 1];
     const remaining = WEEKLY_ALLOW - wk.withdrawn;
-    if (amt > remaining) return showToast(`Only Rs.${remaining.toLocaleString()} left this week`, "warn");
+    if (amt > remaining) return showToast(tx(`Only Rs.${remaining.toLocaleString()} left this week`, `यो हप्तामा Rs.${remaining.toLocaleString()} मात्र बाँकी छ`), "warn");
     setState(prev => {
       const weeks = [...prev.weeks];
       weeks[prev.currentWeek - 1] = { ...wk, withdrawn: wk.withdrawn + amt };
       return { ...prev, weeks, totalWithdrawn: prev.totalWithdrawn + amt };
     });
     setWithdrawAmt("");
-    if (amt === 0) showToast("Rs.0 — saving for reward!", "success");
-    else showToast(`Rs.${amt.toLocaleString()} withdrawn`, "success");
+    if (amt === 0) showToast(tx("Rs.0 — saving for reward!", "Rs.0 — रिवार्डको लागि बचत हुँदैछ!"), "success");
+    else showToast(tx(`Rs.${amt.toLocaleString()} withdrawn`, `Rs.${amt.toLocaleString()} निकालियो`), "success");
   }
 
   // ── ADVANCE WEEK ──
@@ -482,7 +489,7 @@ export default function App() {
 
       return { ...prev, weeks, currentWeek: cw + 1, monthRewards };
     });
-    showToast("⏭ Advanced to next week", "success");
+    showToast(tx("⏭ Advanced to next week", "⏭ अर्को हप्तामा सारियो"), "success");
   }
 
   // ── CLAIM REWARD ──
@@ -496,13 +503,16 @@ export default function App() {
         totalRewardsClaimed: prev.totalRewardsClaimed + mr.reward,
       };
     });
-    showToast(`🎉 Rs.${state.monthRewards[month]?.reward?.toLocaleString()} reward claimed!`, "success");
+    showToast(tx(
+      `🎉 Rs.${state.monthRewards[month]?.reward?.toLocaleString()} reward claimed!`,
+      `🎉 Rs.${state.monthRewards[month]?.reward?.toLocaleString()} रिवार्ड दाबी गरियो!`
+    ), "success");
   }
 
   // ── SIM ──
   function applySimulation() {
     const target = parseInt(simWeek);
-    if (!target || target < 1 || target > WEEK_COUNT) return showToast("Enter a valid week (1–52)", "warn");
+    if (!target || target < 1 || target > WEEK_COUNT) return showToast(tx("Enter a valid week (1–52)", "मान्य हप्ता प्रविष्ट गर्नुहोस् (1–52)"), "warn");
 
     setState(() => {
       const weeks = Array.from({ length: WEEK_COUNT }, (_, i) => {
@@ -531,14 +541,14 @@ export default function App() {
     });
 
     setSimActive(true);
-    showToast(`Simulated to Week ${target}`, "success");
+    showToast(tx(`Simulated to Week ${target}`, `हप्ता ${target} सम्म सिमुलेट गरियो`), "success");
   }
 
   function resetSimulation() {
     setState(initState());
     setSimWeek("1"); setSimDT(""); setSimActive(false);
     setSimSpends([2000, 2000, 2000, 2000]);
-    showToast("Reset to Week 1", "warn");
+    showToast(tx("Reset to Week 1", "हप्ता 1 मा रिसेट गरियो"), "warn");
   }
 
   // ── DERIVED ──
@@ -633,7 +643,7 @@ export default function App() {
   return (
     <>
       <GlobalStyles />
-      <div className="app">
+      <div className={`app ${isNepali ? "lang-ne" : ""}`}>
 
         {/* Toast */}
         {toast && (
@@ -657,19 +667,19 @@ export default function App() {
             </div>
             <div>
               <div className="header-title">Sparty</div>
-              <div className="header-sub">BLOCKED SAVINGS</div>
+              <div className="header-sub">{tx("BLOCKED SAVINGS", "ब्लक गरिएको बचत")}</div>
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {simActive && <span className="badge badge-sim">SIM · W{cw} M{currentMonth}</span>}
             <span className={`badge ${user === "admin" ? "badge-admin" : "badge-user"}`}>
-              {user === "admin" ? "ADMIN" : "USER"}
+              {user === "admin" ? "ADMIN" : tx("USER", "प्रयोगकर्ता")}
             </span>
             <button type="button" className="logout-btn" onClick={() => setShowAdminLogin(true)}>
-              Admin
+              {tx("Admin", "एडमिन")}
             </button>
             <button className="logout-btn" onClick={() => { setUser("user"); setLoginUser(""); setLoginPass(""); setShowAdminLogin(false); }}>
-              <LogOut size={13}/> Sign out
+              <LogOut size={13}/> {tx("Sign out", "साइन आउट")}
             </button>
           </div>
         </div>
@@ -677,16 +687,23 @@ export default function App() {
         <div className="main">
           {/* Tabs */}
           <div className="tabs">
-            <button className={`tab ${tab==="dashboard"?"active":""}`} onClick={() => setTab("dashboard")}>Dashboard</button>
+            <button className={`tab ${tab==="dashboard"?"active":""}`} onClick={() => setTab("dashboard")}>
+              {tx("Dashboard", "ड्यासबोर्ड")}
+            </button>
             {user === "admin" && (
               <button className={`tab ${tab==="admin"?"active":""}`} onClick={() => setTab("admin")}>Admin</button>
             )}
             <button className={`tab ${tab==="ledger"?"active":""}`} onClick={() => setTab("ledger")}>
-              Monthly Ledger
+              {tx("Monthly Ledger", "मासिक लेजर")}
             </button>
             <button className={`tab ${tab==="projection"?"active":""}`} onClick={() => setTab("projection")}>
-              Rewards
+              {tx("Rewards", "रिवार्ड")}
             </button>
+            {user === "user" && (
+              <button className={`tab ${isNepali ? "active" : ""}`} onClick={() => setLang(prev => prev === "ne" ? "en" : "ne")}>
+                {isNepali ? "🇬🇧 English" : "🇳🇵 Nepali"}
+              </button>
+            )}
           </div>
 
           {/* ══════════════════════════════════════
@@ -702,14 +719,15 @@ export default function App() {
                     <PartyPopper size={24} color="var(--reward)" />
                   </div>
                   <div className="reward-banner-body">
-                    <div className="reward-banner-title">Month {prevMonth} Reward Ready!</div>
+                    <div className="reward-banner-title">{tx(`Month ${prevMonth} Reward Ready!`, `महिना ${prevMonth} को रिवार्ड तयार छ!`)}</div>
                     <div className="reward-banner-sub">
-                      You spent Rs.{prevMonthData.spend?.toLocaleString()} last month
-                      &nbsp;({prevMonthData.rewardPct ?? Math.round((prevMonthData.reward / MAX_REWARD) * 100)}% savings efficiency)
-                      &nbsp;— your reward has been unlocked.
+                      {tx(
+                        `You spent Rs.${prevMonthData.spend?.toLocaleString()} last month (${prevMonthData.rewardPct ?? Math.round((prevMonthData.reward / MAX_REWARD) * 100)}% savings efficiency) — your reward has been unlocked.`,
+                        `तपाईंले गत महिना Rs.${prevMonthData.spend?.toLocaleString()} खर्च गर्नुभयो (${prevMonthData.rewardPct ?? Math.round((prevMonthData.reward / MAX_REWARD) * 100)}% बचत दक्षता) — तपाईंको रिवार्ड खुला भएको छ।`
+                      )}
                     </div>
                     <button className="reward-claim-btn" onClick={() => claimReward(prevMonth)}>
-                      <ArrowDownToLine size={15} /> Claim Rs.{prevMonthData.reward.toLocaleString()} Reward
+                      <ArrowDownToLine size={15} /> {tx(`Claim Rs.${prevMonthData.reward.toLocaleString()} Reward`, `Rs.${prevMonthData.reward.toLocaleString()} रिवार्ड दाबी गर्नुहोस्`)}
                     </button>
                   </div>
                   <div className="reward-banner-amount">Rs.{prevMonthData.reward.toLocaleString()}</div>
@@ -720,7 +738,7 @@ export default function App() {
               {prevMonthData?.claimed && (
                 <div className="info-box success" style={{ animation:"slideUp .3s ease" }}>
                   <CheckCircle size={14} style={{ flexShrink:0, marginTop:1 }}/>
-                  <span>Month {prevMonth} reward of Rs.{prevMonthData.reward.toLocaleString()} claimed ✓ — keep it up!</span>
+                  <span>{tx(`Month ${prevMonth} reward of Rs.${prevMonthData.reward.toLocaleString()} claimed ✓ — keep it up!`, `महिना ${prevMonth} को Rs.${prevMonthData.reward.toLocaleString()} रिवार्ड दाबी गरियो ✓ — यस्तै जारी राख्नुहोस्!`)}</span>
                 </div>
               )}
 
@@ -740,7 +758,7 @@ export default function App() {
                   <div className="final-week-grid">
                     {/* Left — spent */}
                     <div style={{ display:"flex", flexDirection:"column", gap:4, position:"relative" }}>
-                      <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, letterSpacing:2, color:"var(--text2)", textTransform:"uppercase" }}>Spent</span>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, letterSpacing:2, color:"var(--text2)", textTransform:"uppercase" }}>{tx("Spent", "खर्च")}</span>
                       <span style={{ fontFamily:"var(--font-display)", fontSize:34, fontWeight:800, color:"var(--warn)", lineHeight:1, letterSpacing:"-0.5px" }}>
                         Rs.{monthSpend.toLocaleString()}
                       </span>
@@ -755,7 +773,7 @@ export default function App() {
                     <div className="final-week-center">
                       <Sparkles size={20} color="var(--accent2)" />
                       <span style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:800, letterSpacing:2, color:"var(--accent2)", textTransform:"uppercase", whiteSpace:"nowrap" }}>
-                        Final Week
+                        {tx("Final Week", "अन्तिम हप्ता")}
                       </span>
                       <span style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:600, color:"var(--text2)", letterSpacing:1 }}>
                         M{currentMonth} · W4
@@ -764,14 +782,14 @@ export default function App() {
 
                     {/* Right — reward */}
                     <div style={{ display:"flex", flexDirection:"column", gap:4, alignItems:"flex-end", position:"relative" }}>
-                      <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, letterSpacing:2, color:"var(--text2)", textTransform:"uppercase" }}>Reward</span>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, letterSpacing:2, color:"var(--text2)", textTransform:"uppercase" }}>{tx("Reward", "रिवार्ड")}</span>
                       <span style={{ fontFamily:"var(--font-display)", fontSize:34, fontWeight:800, lineHeight:1, letterSpacing:"-0.5px",
                         color: monthReward>=3000?"var(--accent)":monthReward>=1000?"var(--warn)":"var(--danger)" }}>
                         Rs.{monthReward.toLocaleString()}
                       </span>
                       <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700,
                         color: monthReward>=3000?"var(--accent)":monthReward>=1000?"var(--warn)":"var(--danger)", opacity:0.9 }}>
-                        {monthRewardPct}% now
+                        {tx(`${monthRewardPct}% now`, `अहिले ${monthRewardPct}%`)}
                       </span>
                     </div>
                   </div>
@@ -780,23 +798,23 @@ export default function App() {
                   <div className="final-week-proj" style={{ position:"relative" }}>
                     {monthSpend <= 6000 && (
                       <div className="final-week-proj-row">
-                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>To keep 100% reward:</span>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>{tx("To keep 100% reward:", "100% रिवार्ड कायम राख्न:")}</span>
                         <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--accent)", fontWeight:800 }}>
-                          withdraw ≤ Rs.{finalWeekMaxSafeWithdraw.toLocaleString()} this week
+                          {tx(`withdraw ≤ Rs.${finalWeekMaxSafeWithdraw.toLocaleString()} this week`, `यो हप्ता ≤ Rs.${finalWeekMaxSafeWithdraw.toLocaleString()} निकाल्नुहोस्`)}
                         </span>
                       </div>
                     )}
                     {monthSpend > 6000 && (
                       <div className="final-week-proj-row">
-                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>100% reward no longer possible this month</span>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>{tx("100% reward no longer possible this month", "यो महिनामा 100% रिवार्ड अब सम्भव छैन")}</span>
                       </div>
                     )}
                     {weekRemaining > 0 && (
                       <div className="final-week-proj-row">
-                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>If you use full Rs.{weekRemaining.toLocaleString()} left:</span>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>{tx(`If you use full Rs.${weekRemaining.toLocaleString()} left:`, `यदि बाँकी Rs.${weekRemaining.toLocaleString()} पूरा प्रयोग गर्नुभयो भने:`)}</span>
                         <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:800,
                           color: rewardIfFullWeek>=3000?"var(--accent)":rewardIfFullWeek>=1000?"var(--warn)":"var(--danger)" }}>
-                          {pctIfFullWeek}% → Rs.{rewardIfFullWeek.toLocaleString()} reward
+                          {tx(`${pctIfFullWeek}% → Rs.${rewardIfFullWeek.toLocaleString()} reward`, `${pctIfFullWeek}% → Rs.${rewardIfFullWeek.toLocaleString()} रिवार्ड`)}
                         </span>
                       </div>
                     )}
@@ -811,52 +829,52 @@ export default function App() {
                     <div className="circle-main-val" style={{ color: ringColor }}>
                       Rs.{weekWithdrawn.toLocaleString()}
                     </div>
-                    <div className="circle-main-label">WITHDRAWN</div>
-                    <div className="circle-sub">of Rs.{WEEKLY_ALLOW.toLocaleString()}</div>
+                    <div className="circle-main-label">{tx("WITHDRAWN", "निकालिएको")}</div>
+                    <div className="circle-sub">{tx(`of Rs.${WEEKLY_ALLOW.toLocaleString()}`, `जम्मा Rs.${WEEKLY_ALLOW.toLocaleString()} मध्ये`)}</div>
                   </CircularProgress>
 
                   <div className="stats-row">
                     <div className="stat-item">
-                      <span className="stat-lbl">REMAINING</span>
+                      <span className="stat-lbl">{tx("REMAINING", "बाँकी")}</span>
                       <span className="stat-val" style={{ color:"var(--accent)" }}>Rs.{weekRemaining.toLocaleString()}</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-lbl">SAVED THIS WK</span>
+                      <span className="stat-lbl">{tx("SAVED THIS WK", "यो हप्ता बचत")}</span>
                       <span className="stat-val" style={{ color: weekWithdrawn <= 1500 ? "var(--accent)" : "var(--warn)" }}>
                         Rs.{(WEEKLY_ALLOW - weekWithdrawn).toLocaleString()}
                       </span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-lbl">WEEK {weekInMonth}/4</span>
+                      <span className="stat-lbl">{tx(`WEEK ${weekInMonth}/4`, `हप्ता ${weekInMonth}/4`)}</span>
                       <span className="stat-val">{cw}<span style={{ fontSize:11, color:"var(--text2)", fontStyle:"normal" }}>/52</span></span>
                     </div>
                   </div>
 
                   <div className="withdraw-section" style={{ width:"100%" }}>
                     <div className="withdraw-input-row">
-                      <input className="withdraw-input" type="number" min={0} placeholder="Amount (0 to save for reward)"
+                      <input className="withdraw-input" type="number" min={0} placeholder={tx("Amount (0 to save for reward)", "रकम (रिवार्डका लागि बचत गर्न 0)")}
                         value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && handleWithdraw()} max={weekRemaining} />
                       <button className="withdraw-btn" onClick={handleWithdraw} disabled={weekRemaining <= 0}>
-                        Withdraw
+                        {tx("Withdraw", "निकाल्नुहोस्")}
                       </button>
                     </div>
                     {weekRemaining >= SAVE_TARGET && weekWithdrawn < WEEKLY_ALLOW && (
                       <div className="info-box success">
                         <Gift size={13} style={{ flexShrink:0, marginTop:1 }}/>
-                        <span>Spend ≤ Rs.1,500 this week — contributes to your month-end reward!</span>
+                        <span>{tx("Spend ≤ Rs.1,500 this week — contributes to your month-end reward!", "यो हप्ता ≤ Rs.1,500 खर्च गर्नुहोस् — महिना अन्त्यको रिवार्डमा योगदान हुन्छ!")}</span>
                       </div>
                     )}
                     {weekRemaining < SAVE_TARGET && weekRemaining > 0 && (
                       <div className="info-box warn">
                         <AlertCircle size={13} style={{ flexShrink:0, marginTop:1 }}/>
-                        <span>Spent past savings target this week — partial reward will apply</span>
+                        <span>{tx("Spent past savings target this week — partial reward will apply", "यो हप्ता बचत लक्ष्यभन्दा बढी खर्च भयो — आंशिक रिवार्ड लागू हुनेछ")}</span>
                       </div>
                     )}
                     {weekRemaining === 0 && (
                       <div className="info-box warn">
                         <AlertCircle size={13} style={{ flexShrink:0, marginTop:1 }}/>
-                        <span>Weekly limit reached — next withdrawal unlocks on Sunday</span>
+                        <span>{tx("Weekly limit reached — next withdrawal unlocks on Sunday", "साप्ताहिक सीमा पुगेको छ — अर्को निकासी आइतबार खुल्छ")}</span>
                       </div>
                     )}
                   </div>
@@ -873,9 +891,14 @@ export default function App() {
 
                   {/* Timer */}
                   <div className="card">
-                    <div className="section-title"><Clock size={13}/> Next Withdrawal Unlock</div>
+                    <div className="section-title"><Clock size={13}/> {tx("Next Withdrawal Unlock", "अर्को निकासी खुल्ने समय")}</div>
                     <div className="timer-display">
-                      {[["d","DAYS"],["h","HRS"],["m","MIN"],["s","SEC"]].map(([k,label],i) => (
+                      {[
+                        ["d", tx("DAYS", "दिन")],
+                        ["h", tx("HRS", "घण्टा")],
+                        ["m", tx("MIN", "मिनेट")],
+                        ["s", tx("SEC", "सेकेन्ड")]
+                      ].map(([k,label],i) => (
                         <div key={k} style={{ display:"flex", alignItems:"center" }}>
                           {i > 0 && <span className="timer-sep">:</span>}
                           <div className="timer-unit">
@@ -886,24 +909,24 @@ export default function App() {
                       ))}
                     </div>
                     <div style={{ textAlign:"center", fontFamily:"var(--font-mono)", fontSize:10, color:"var(--text2)", marginTop:14, letterSpacing:1.5 }}>
-                      {simActive && simDT ? "SIMULATED TIME" : "RESETS EVERY SUNDAY AT 00:00"}
+                      {simActive && simDT ? tx("SIMULATED TIME", "सिमुलेट गरिएको समय") : tx("RESETS EVERY SUNDAY AT 00:00", "हरेक आइतबार 00:00 मा रिसेट हुन्छ")}
                     </div>
                   </div>
 
                   {/* Month reward meter */}
                   <div className="card">
-                    <div className="section-title"><TrendingUp size={13}/> Month {currentMonth} Reward Meter</div>
+                    <div className="section-title"><TrendingUp size={13}/> {tx(`Month ${currentMonth} Reward Meter`, `महिना ${currentMonth} रिवार्ड मिटर`)}</div>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:16 }}>
                       <div>
-                        <div className="card-label">PROJECTED BONUS</div>
+                        <div className="card-label">{tx("PROJECTED BONUS", "अनुमानित बोनस")}</div>
                         <div style={{ fontFamily:"var(--font-display)", fontSize:28, fontWeight:800, letterSpacing:-1, color: monthReward >= 3000 ? "var(--accent)" : monthReward >= 1500 ? "var(--warn)" : "var(--danger)" }}>
                           Rs.{monthReward.toLocaleString()}
                         </div>
                       </div>
                       <div style={{ textAlign:"right" }}>
-                        <div className="card-label">EFFICIENCY</div>
+                        <div className="card-label">{tx("EFFICIENCY", "दक्षता")}</div>
                         <div style={{ fontFamily:"var(--font-display)", fontSize:28, fontWeight:800, letterSpacing:-1, color:"var(--accent2)" }}>{monthRewardPct}%</div>
-                        <div style={{ fontFamily:"var(--font-display)", fontSize:10, color:"var(--text2)", marginTop:2 }}>at current spend</div>
+                        <div style={{ fontFamily:"var(--font-display)", fontSize:10, color:"var(--text2)", marginTop:2 }}>{tx("at current spend", "हालको खर्चमा")}</div>
                       </div>
                     </div>
 
@@ -914,7 +937,7 @@ export default function App() {
                         fontFamily:"var(--font-display)"
                       }}>
                         <div style={{ fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--accent2)", marginBottom:10, textTransform:"uppercase" }}>
-                          In remaining weeks (W{weekInMonth} left + {remainingWeeksInMonth} more): withdraw ≤
+                          {tx(`In remaining weeks (W${weekInMonth} left + ${remainingWeeksInMonth} more): withdraw ≤`, `बाँकी हप्ताहरूमा (W${weekInMonth} बाँकी + ${remainingWeeksInMonth} थप): ≤ निकाल्नुहोस्`)}
                         </div>
                         <div style={{ display:"flex", flexWrap:"wrap", gap:10, alignItems:"center" }}>
                           {maxWithdrawFor100 > 0 && (
@@ -954,7 +977,7 @@ export default function App() {
                               W{w.week}{isCurrentWk ? "◀" : ""}
                             </span>
                             <span style={{ fontFamily:"var(--font-mono)", fontSize:9, color:"var(--text2)" }}>
-                              {done ? `₹${w.withdrawn}` : isCurrentWk ? "NOW" : "—"}
+                              {done ? `Rs.${w.withdrawn}` : isCurrentWk ? tx("NOW", "अहिले") : "—"}
                             </span>
                           </div>
                         );
@@ -963,7 +986,7 @@ export default function App() {
 
                     <div className="progress-wrap">
                       <div className="progress-header">
-                        <span style={{ fontFamily:"var(--font-mono)", fontSize:10, color:"var(--text2)" }}>MONTHLY SPEND</span>
+                        <span style={{ fontFamily:"var(--font-mono)", fontSize:10, color:"var(--text2)" }}>{tx("MONTHLY SPEND", "मासिक खर्च")}</span>
                         <span style={{ fontFamily:"var(--font-mono)", fontSize:10 }}>Rs.{monthSpend.toLocaleString()} / Rs.8,000</span>
                       </div>
                       <div className="progress-track">
@@ -971,13 +994,13 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{ marginTop:10, fontFamily:"var(--font-mono)", fontSize:10, color:"var(--text2)", lineHeight:1.6 }}>
-                      Target: ≤ Rs.6,000/mo → Rs.4,000 bonus · Payout unlocks end of Week {currentMonth * 4}
+                      {tx(`Target: ≤ Rs.6,000/mo → Rs.4,000 bonus · Payout unlocks end of Week ${currentMonth * 4}`, `लक्ष्य: ≤ Rs.6,000/महिना → Rs.4,000 बोनस · भुक्तानी हप्ता ${currentMonth * 4} को अन्त्यमा खुल्छ`)}
                     </div>
                   </div>
 
                   {/* Recent weeks */}
                   <div className="card" style={{ flex:1 }}>
-                    <div className="section-title"><Calendar size={13}/> Recent Weeks</div>
+                    <div className="section-title"><Calendar size={13}/> {tx("Recent Weeks", "हालका हप्ताहरू")}</div>
                     <div className="week-history">
                       {state.weeks.slice(Math.max(0, cw-5), cw+1).slice(-5).map(w => {
                         const isCur   = w.week === cw;
@@ -990,17 +1013,17 @@ export default function App() {
                             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                               <div className={`week-dot ${isCur?"dot-pending":w.completed?(savedOk?"dot-saved":partial?"dot-partial":"dot-none"):"dot-pending"}`} />
                               <span style={{ fontFamily:"var(--font-mono)", fontSize:12 }}>
-                                Week {w.week}
-                                {isCur && <span style={{ color:"var(--accent2)", fontSize:10, marginLeft:4 }}>NOW</span>}
-                                {isEnd && !isCur && w.completed && <span style={{ color:"var(--reward)", fontSize:9, marginLeft:4 }}>END</span>}
+                                {tx(`Week ${w.week}`, `हप्ता ${w.week}`)}
+                                {isCur && <span style={{ color:"var(--accent2)", fontSize:10, marginLeft:4 }}>{tx("NOW", "अहिले")}</span>}
+                                {isEnd && !isCur && w.completed && <span style={{ color:"var(--reward)", fontSize:9, marginLeft:4 }}>{tx("END", "अन्त्य")}</span>}
                               </span>
                             </div>
                             <span style={{ fontFamily:"var(--font-mono)", fontSize:12, color:"var(--text2)" }}>
-                              {isCur ? `Rs.${w.withdrawn.toLocaleString()} used` : w.completed ? `Rs.${w.withdrawn.toLocaleString()} spent` : "—"}
+                              {isCur ? tx(`Rs.${w.withdrawn.toLocaleString()} used`, `Rs.${w.withdrawn.toLocaleString()} प्रयोग`) : w.completed ? tx(`Rs.${w.withdrawn.toLocaleString()} spent`, `Rs.${w.withdrawn.toLocaleString()} खर्च`) : "—"}
                             </span>
                             {w.completed && !isCur && (
                               <span style={{ fontSize:10, fontFamily:"var(--font-mono)", color: savedOk?"var(--accent)":partial?"var(--warn)":"var(--danger)" }}>
-                                {savedOk ? "SAVED ✓" : partial ? "PARTIAL" : "FULL"}
+                                {savedOk ? tx("SAVED ✓", "बचत ✓") : partial ? tx("PARTIAL", "आंशिक") : tx("FULL", "पूर्ण")}
                               </span>
                             )}
                           </div>
@@ -1023,12 +1046,12 @@ export default function App() {
               {completedMonths.length > 0 && (
                 <div className="grid-4">
                   {[
-                    { label:"TOTAL SPENT",   val:`Rs.${completedMonths.reduce((s,r)=>s+r.spend,0).toLocaleString()}`,  color:"var(--warn)" },
-                    { label:"TOTAL REWARDS", val:`Rs.${completedMonths.reduce((s,r)=>s+r.reward,0).toLocaleString()}`, color:"var(--reward)" },
-                    { label:"CLAIMED",       val:`Rs.${state.totalRewardsClaimed.toLocaleString()}`,                   color:"var(--accent)" },
-                    { label:"UNCLAIMED",     val:`Rs.${(completedMonths.reduce((s,r)=>s+r.reward,0)-state.totalRewardsClaimed).toLocaleString()}`, color:"var(--accent2)" },
+                    { key:"TOTAL SPENT",   label:tx("TOTAL SPENT", "कुल खर्च"),     val:`Rs.${completedMonths.reduce((s,r)=>s+r.spend,0).toLocaleString()}`,  color:"var(--warn)" },
+                    { key:"TOTAL REWARDS", label:tx("TOTAL REWARDS", "कुल रिवार्ड"), val:`Rs.${completedMonths.reduce((s,r)=>s+r.reward,0).toLocaleString()}`, color:"var(--reward)" },
+                    { key:"CLAIMED",       label:tx("CLAIMED", "दाबी गरिएको"),       val:`Rs.${state.totalRewardsClaimed.toLocaleString()}`,                   color:"var(--accent)" },
+                    { key:"UNCLAIMED",     label:tx("UNCLAIMED", "दाबी बाँकी"),      val:`Rs.${(completedMonths.reduce((s,r)=>s+r.reward,0)-state.totalRewardsClaimed).toLocaleString()}`, color:"var(--accent2)" },
                   ].map(item => (
-                    <div key={item.label} style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, padding:"16px 20px" }}>
+                    <div key={item.key} style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, padding:"16px 20px" }}>
                       <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase", marginBottom:6 }}>{item.label}</div>
                       <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color:item.color }}>{item.val}</div>
                     </div>
@@ -1040,8 +1063,8 @@ export default function App() {
               {completedMonths.length === 0 && (
                 <div className="card" style={{ textAlign:"center", padding:"48px 28px" }}>
                   <BarChart2 size={32} color="var(--border)" style={{ margin:"0 auto 12px" }}/>
-                  <div style={{ fontFamily:"var(--font-display)", fontSize:14, color:"var(--text2)" }}>No completed months yet</div>
-                  <div style={{ fontFamily:"var(--font-display)", fontSize:12, color:"var(--text2)", marginTop:4, opacity:0.6 }}>Advance through Week 4 to see your first month's payout</div>
+                  <div style={{ fontFamily:"var(--font-display)", fontSize:14, color:"var(--text2)" }}>{tx("No completed months yet", "अहिलेसम्म कुनै महिना पूरा भएको छैन")}</div>
+                  <div style={{ fontFamily:"var(--font-display)", fontSize:12, color:"var(--text2)", marginTop:4, opacity:0.6 }}>{tx("Advance through Week 4 to see your first month's payout", "पहिलो महिनाको भुक्तानी हेर्न हप्ता 4 सम्म जानुहोस्")}</div>
                 </div>
               )}
 
@@ -1059,33 +1082,33 @@ export default function App() {
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                         <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color: row.inProgress ? "var(--accent2)" : "var(--text)" }}>
-                          Month {row.month}
+                          {tx(`Month ${row.month}`, `महिना ${row.month}`)}
                         </div>
                         {row.inProgress
-                          ? <span className="payout-chip payout-chip-pending">IN PROGRESS</span>
+                          ? <span className="payout-chip payout-chip-pending">{tx("IN PROGRESS", "प्रगतिमा")}</span>
                           : mr?.claimed
-                          ? <span className="payout-chip payout-chip-yes"><CheckCircle size={10}/> CLAIMED</span>
+                          ? <span className="payout-chip payout-chip-yes"><CheckCircle size={10}/> {tx("CLAIMED", "दाबी गरियो")}</span>
                           : row.reward > 0
-                          ? <span className="payout-chip payout-chip-pending">UNCLAIMED</span>
-                          : <span className="payout-chip payout-chip-no">NO REWARD</span>
+                          ? <span className="payout-chip payout-chip-pending">{tx("UNCLAIMED", "दाबी बाँकी")}</span>
+                          : <span className="payout-chip payout-chip-no">{tx("NO REWARD", "रिवार्ड छैन")}</span>
                         }
                       </div>
                       {/* Reward + claim */}
                       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                         <div style={{ textAlign:"right" }}>
                           <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase" }}>
-                            {row.inProgress ? "Est. Reward" : "Reward"}
+                            {row.inProgress ? tx("Est. Reward", "अनुमानित रिवार्ड") : tx("Reward", "रिवार्ड")}
                           </div>
                           <div style={{ fontFamily:"var(--font-display)", fontSize:26, fontWeight:800, color: rewardColor, lineHeight:1 }}>
                             {row.inProgress ? "~" : ""}Rs.{row.reward.toLocaleString()}
                           </div>
                           <div style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, color: rewardColor, opacity:0.8 }}>
-                            {rPct}% efficiency
+                            {tx(`${rPct}% efficiency`, `${rPct}% दक्षता`)}
                           </div>
                         </div>
                         {!row.inProgress && !mr?.claimed && row.reward > 0 && (
                           <button className="reward-claim-btn" onClick={() => claimReward(row.month)} style={{ marginTop:0 }}>
-                            <ArrowDownToLine size={13}/> Claim
+                            <ArrowDownToLine size={13}/> {tx("Claim", "दाबी")}
                           </button>
                         )}
                       </div>
@@ -1111,11 +1134,11 @@ export default function App() {
                             </div>
                             {done && (
                               <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, color:valColor, opacity:0.8 }}>
-                                {saved ? "saved ✓" : partial ? "partial" : "full"}
+                                {saved ? tx("saved ✓", "बचत ✓") : partial ? tx("partial", "आंशिक") : tx("full", "पूर्ण")}
                               </div>
                             )}
                             {isCurWk && !done && (
-                              <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, color:"var(--accent2)" }}>now</div>
+                              <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, color:"var(--accent2)" }}>{tx("now", "अहिले")}</div>
                             )}
                           </div>
                         );
@@ -1125,7 +1148,7 @@ export default function App() {
                     {/* Spend bar */}
                     <div>
                       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                        <span style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)", fontWeight:600 }}>MONTHLY SPEND</span>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)", fontWeight:600 }}>{tx("MONTHLY SPEND", "मासिक खर्च")}</span>
                         <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:800, color:"var(--warn)" }}>Rs.{row.spend.toLocaleString()} / Rs.8,000</span>
                       </div>
                       <div style={{ height:5, background:"var(--surface2)", borderRadius:99 }}>
@@ -1287,11 +1310,11 @@ export default function App() {
 
               {/* Perfect savings: 6 month cards */}
               <div className="card">
-                <div className="section-title"><TrendingUp size={13}/> Perfect Savings — 6 Month Projection</div>
+                <div className="section-title"><TrendingUp size={13}/> {tx("Perfect Savings — 6 Month Projection", "उत्तम बचत — 6 महिनाको प्रक्षेपण")}</div>
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20, padding:"12px 16px", background:"rgba(96,200,240,0.06)", border:"1px solid rgba(96,200,240,0.18)", borderRadius:10 }}>
                   <Gift size={14} color="var(--accent2)" style={{ flexShrink:0 }}/>
                   <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:600, color:"var(--text2)" }}>
-                    Spend ≤ Rs.1,500/week × 4 weeks = Rs.6,000/month → earn Rs.4,000 bonus at month end
+                    {tx("Spend ≤ Rs.1,500/week × 4 weeks = Rs.6,000/month → earn Rs.4,000 bonus at month end", "≤ Rs.1,500/हप्ता × 4 हप्ता = Rs.6,000/महिना खर्च गर्दा महिना अन्त्यमा Rs.4,000 बोनस पाउनुहुन्छ")}
                   </span>
                 </div>
                 <div className="grid-3" style={{ marginBottom:20 }}>
@@ -1302,7 +1325,7 @@ export default function App() {
                     return (
                       <div key={m} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:12, padding:"18px 20px", display:"flex", flexDirection:"column", gap:10 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                          <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:800, color:"var(--text2)" }}>Month {m}</span>
+                          <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:800, color:"var(--text2)" }}>{tx(`Month ${m}`, `महिना ${m}`)}</span>
                           <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, color:"var(--accent)", background:"rgba(200,240,96,0.1)", border:"1px solid rgba(200,240,96,0.2)", borderRadius:20, padding:"2px 10px" }}>+Rs.4,000</span>
                         </div>
                         {/* 4 week dots */}
@@ -1317,11 +1340,11 @@ export default function App() {
                         <div style={{ height:1, background:"var(--border)" }} />
                         <div style={{ display:"flex", justifyContent:"space-between" }}>
                           <div>
-                            <div style={{ fontFamily:"var(--font-display)", fontSize:9, color:"var(--text2)", letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>Cumul. Spent</div>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:9, color:"var(--text2)", letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>{tx("Cumul. Spent", "संचित खर्च")}</div>
                             <div style={{ fontFamily:"var(--font-display)", fontSize:14, fontWeight:800, color:"var(--warn)" }}>Rs.{cs.toLocaleString()}</div>
                           </div>
                           <div style={{ textAlign:"right" }}>
-                            <div style={{ fontFamily:"var(--font-display)", fontSize:9, color:"var(--text2)", letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>In Hand</div>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:9, color:"var(--text2)", letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>{tx("In Hand", "हातमा")}</div>
                             <div style={{ fontFamily:"var(--font-display)", fontSize:14, fontWeight:800, color:"var(--accent)" }}>Rs.{(cs+cr).toLocaleString()}</div>
                           </div>
                         </div>
@@ -1332,31 +1355,31 @@ export default function App() {
                 {/* 6-month totals */}
                 <div className="grid-3">
                   {[
-                    { label:"6-Mo Spent",   val:"Rs.36,000", color:"var(--warn)" },
-                    { label:"6-Mo Rewards", val:"Rs.24,000", color:"var(--reward)" },
-                    { label:"Total in Hand",val:"Rs.60,000", color:"var(--accent)" },
+                    { key:"6-Mo Spent",   label:tx("6-Mo Spent", "6-महिना खर्च"),   val:"Rs.36,000", color:"var(--warn)" },
+                    { key:"6-Mo Rewards", label:tx("6-Mo Rewards", "6-महिना रिवार्ड"), val:"Rs.24,000", color:"var(--reward)" },
+                    { key:"Total in Hand",label:tx("Total in Hand", "हातमा कुल"), val:"Rs.60,000", color:"var(--accent)" },
                   ].map(x => (
-                    <div key={x.label} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:10, padding:"14px 18px" }}>
+                    <div key={x.key} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:10, padding:"14px 18px" }}>
                       <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase", marginBottom:4 }}>{x.label}</div>
                       <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color:x.color }}>{x.val}</div>
                     </div>
                   ))}
                 </div>
                 <div style={{ marginTop:14, fontFamily:"var(--font-display)", fontSize:12, color:"var(--text2)", lineHeight:1.8 }}>
-                  That's a <strong style={{ color:"var(--accent)" }}>66.7% bonus</strong> on actual spend — all within the Rs.1,20,000 annual budget.
+                  {tx("That's a ", "यो वास्तविक खर्चमा ")}<strong style={{ color:"var(--accent)" }}>66.7% {tx("bonus", "बोनस")}</strong>{tx(" on actual spend — all within the Rs.1,20,000 annual budget.", " हो — सबै Rs.1,20,000 वार्षिक बजेटभित्र।")}
                 </div>
               </div>
 
               {/* Reward scale */}
               <div className="card">
-                <div className="section-title"><Gift size={13}/> Monthly Reward Scale</div>
+                <div className="section-title"><Gift size={13}/> {tx("Monthly Reward Scale", "मासिक रिवार्ड स्केल")}</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                   {[
-                    { spend:6000, label:"Rs.6,000", tag:"Perfect" },
-                    { spend:6500, label:"Rs.6,500", tag:"Good" },
-                    { spend:7000, label:"Rs.7,000", tag:"Okay" },
-                    { spend:7500, label:"Rs.7,500", tag:"Over" },
-                    { spend:8000, label:"Rs.8,000", tag:"Max" },
+                    { spend:6000, label:"Rs.6,000", tag:tx("Perfect", "उत्तम") },
+                    { spend:6500, label:"Rs.6,500", tag:tx("Good", "राम्रो") },
+                    { spend:7000, label:"Rs.7,000", tag:tx("Okay", "ठीकठाक") },
+                    { spend:7500, label:"Rs.7,500", tag:tx("Over", "बढी") },
+                    { spend:8000, label:"Rs.8,000", tag:tx("Max", "अधिकतम") },
                   ].map(s => {
                     const reward = calcReward(s.spend);
                     const pct    = Math.round((reward/MAX_REWARD)*100);
@@ -1386,25 +1409,25 @@ export default function App() {
 
                 {/* Mixed month example */}
                 <div style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:700, color:"var(--text)", marginBottom:14, display:"flex", alignItems:"center", gap:8 }}>
-                  <AlertCircle size={14} color="var(--accent2)"/> Mixed Month Example
+                  <AlertCircle size={14} color="var(--accent2)"/> {tx("Mixed Month Example", "मिश्रित महिनाको उदाहरण")}
                 </div>
                 <div style={{ display:"flex", gap:8, marginBottom:14 }}>
                   {[{w:1,amt:2000,saved:false},{w:2,amt:1500,saved:true},{w:3,amt:2000,saved:false},{w:4,amt:1500,saved:true}].map(x => (
                     <div key={x.w} style={{ flex:1, background: x.saved?"rgba(200,240,96,0.08)":"rgba(240,96,96,0.08)", border:`1px solid ${x.saved?"rgba(200,240,96,0.25)":"rgba(240,96,96,0.2)"}`, borderRadius:10, padding:"12px 14px" }}>
                       <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase", marginBottom:4 }}>W{x.w}</div>
                       <div style={{ fontFamily:"var(--font-display)", fontSize:16, fontWeight:800, color: x.saved?"var(--accent)":"var(--danger)" }}>Rs.{x.amt.toLocaleString()}</div>
-                      <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, color: x.saved?"var(--accent)":"var(--danger)", opacity:0.8, marginTop:2 }}>{x.saved?"saved ✓":"no save"}</div>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, color: x.saved?"var(--accent)":"var(--danger)", opacity:0.8, marginTop:2 }}>{x.saved ? tx("saved ✓", "बचत ✓") : tx("no save", "बचत छैन")}</div>
                     </div>
                   ))}
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", background:"rgba(96,200,240,0.06)", border:"1px solid rgba(96,200,240,0.18)", borderRadius:10 }}>
                   <div>
-                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)", marginBottom:2 }}>Total spend: <strong style={{ color:"var(--accent2)" }}>Rs.7,000</strong> · 2/4 weeks saved</div>
-                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)" }}>vs full reward target of Rs.6,000</div>
+                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)", marginBottom:2 }}>{tx("Total spend:", "कुल खर्च:")} <strong style={{ color:"var(--accent2)" }}>Rs.7,000</strong> · {tx("2/4 weeks saved", "2/4 हप्ता बचत")}</div>
+                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)" }}>{tx("vs full reward target of Rs.6,000", "पूर्ण रिवार्ड लक्ष्य Rs.6,000 सँग तुलना")}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
                     <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color:"var(--warn)" }}>Rs.{calcReward(7000).toLocaleString()}</div>
-                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, color:"var(--warn)", opacity:0.8 }}>{Math.round((calcReward(7000)/MAX_REWARD)*100)}% payout</div>
+                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, color:"var(--warn)", opacity:0.8 }}>{tx(`${Math.round((calcReward(7000)/MAX_REWARD)*100)}% payout`, `${Math.round((calcReward(7000)/MAX_REWARD)*100)}% भुक्तानी`)}</div>
                   </div>
                 </div>
               </div>
