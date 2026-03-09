@@ -3,7 +3,7 @@ import {
   Lock, TrendingUp, Clock, LogOut, Shield, BarChart2,
   Gift, AlertCircle, CheckCircle, Calendar, FastForward,
   SkipForward, RotateCcw, FlaskConical, Sparkles, PartyPopper,
-  Wallet, ArrowDownToLine
+  Wallet, ArrowDownToLine, Landmark
 } from "lucide-react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -14,6 +14,7 @@ const MAX_REWARD     = 4000;  // full month reward
 const WEEK_COUNT     = 52;
 const WEEKS_PER_MON  = 4;
 const MAX_MONTHLY    = WEEKLY_ALLOW * WEEKS_PER_MON; // 8000
+const STORAGE_KEY    = "sparkonto_state_v1";
 
 function calcReward(monthlySpend) {
   const lo = 6000, hi = MAX_MONTHLY;
@@ -47,7 +48,7 @@ function initState() {
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -64,7 +65,7 @@ const GlobalStyles = () => (
       --text:     #e8e8f0;
       --text2:    #888898;
       --font-display: 'Nunito', sans-serif;
-      --font-mono:    'DM Mono', monospace;
+      --font-mono:    'Nunito', sans-serif;
       --radius: 16px;
     }
     body { background: var(--bg); color: var(--text); font-family: var(--font-display); min-height: 100vh; overflow-x: hidden; }
@@ -169,8 +170,8 @@ const GlobalStyles = () => (
     /* TIMER */
     .timer-display { display:flex; align-items:center; gap:4px; justify-content:center; }
     .timer-unit { display:flex; flex-direction:column; align-items:center; gap:4px; }
-    .timer-num { font-size:32px; font-weight:800; letter-spacing:-1px; font-family:var(--font-mono); color:var(--accent2); }
-    .timer-lbl { font-size:9px; color:var(--text2); font-family:var(--font-mono); letter-spacing:1.5px; }
+    .timer-num { font-size:32px; font-weight:800; letter-spacing:-1px; font-family:var(--font-display); color:var(--accent2); }
+    .timer-lbl { font-size:9px; color:var(--text2); font-family:var(--font-display); letter-spacing:1.5px; }
     .timer-sep { font-size:28px; font-weight:300; color:var(--border); padding-bottom:12px; margin:0 4px; }
 
     /* TABLE */
@@ -260,14 +261,42 @@ const GlobalStyles = () => (
     @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
     @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .final-week-card { padding:24px 32px; }
+    .final-week-grid { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:0; position:relative; }
+    .final-week-center { display:flex; flex-direction:column; align-items:center; gap:8px; padding:0 28px; }
+    .final-week-proj { margin-top:20px; padding-top:18px; border-top:1px solid rgba(96,200,240,0.15); display:flex; flex-direction:column; gap:10px; }
+    .final-week-proj-row { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+
+    @media (max-width:480px) {
+      .final-week-card { padding:18px 20px; }
+      .final-week-grid { grid-template-columns:1fr 1fr; }
+      .final-week-center { display:none; }
+      .final-week-proj-row { flex-direction:column; align-items:flex-start; gap:4px; }
+    }
+
     @media (max-width:768px) {
       .main { padding:16px; }
       .grid-2 { grid-template-columns:1fr; }
+      .grid-3 { grid-template-columns:1fr 1fr; }
+      .grid-4 { grid-template-columns:1fr 1fr; }
       .admin-grid { grid-template-columns:1fr 1fr; }
       .sim-grid { grid-template-columns:1fr; }
       .header { padding:16px; }
       .header-title { font-size:20px; }
       .reward-banner { flex-direction:column; align-items:flex-start; }
+    }
+
+    @media (max-width:480px) {
+      .grid-3 { grid-template-columns:1fr; }
+      .grid-4 { grid-template-columns:1fr 1fr; }
+      .final-week-grid { grid-template-columns:1fr 1fr; row-gap:16px; }
+      .final-week-grid > :nth-child(2) { display:none; }
+      .tabs { flex-wrap:wrap; }
+      .tab { flex:unset; width:calc(50% - 4px); font-size:13px; }
+      .stats-row { grid-template-columns:1fr 1fr; }
+      .stat-item:last-child { grid-column:1/-1; border-right:none; border-top:1px solid var(--border); }
     }
   `}</style>
 );
@@ -325,6 +354,7 @@ export default function App() {
   const [withdrawAmt,setWithdrawAmt]= useState("");
   const [tab,        setTab]        = useState("dashboard");
   const [toast,      setToast]      = useState(null);
+  const [hydrated,   setHydrated]   = useState(false); // has localStorage load run?
 
   // sim
   const [simActive,  setSimActive]  = useState(false);
@@ -338,6 +368,49 @@ export default function App() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3200);
   }, []);
+
+  // ── PERSISTENCE ──
+  // Load from localStorage on first mount (if available)
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.weeks)) {
+        setState(prev => ({
+          ...prev,
+          weeks: parsed.weeks ?? prev.weeks,
+          totalWithdrawn: parsed.totalWithdrawn ?? prev.totalWithdrawn,
+          currentWeek: parsed.currentWeek ?? prev.currentWeek,
+          monthRewards: parsed.monthRewards ?? prev.monthRewards,
+          totalRewardsClaimed: parsed.totalRewardsClaimed ?? prev.totalRewardsClaimed,
+        }));
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+    setHydrated(true);
+  }, []);
+
+  // Save core state to localStorage whenever it changes
+  useEffect(() => {
+    if (!hydrated) return;
+    if (typeof window === "undefined" || !window.localStorage) return;
+    try {
+      const payload = {
+        version: 1,
+        weeks: state.weeks,
+        totalWithdrawn: state.totalWithdrawn,
+        currentWeek: state.currentWeek,
+        monthRewards: state.monthRewards,
+        totalRewardsClaimed: state.totalRewardsClaimed,
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore quota / access errors
+    }
+  }, [hydrated, state.weeks, state.totalWithdrawn, state.currentWeek, state.monthRewards, state.totalRewardsClaimed]);
 
   // ── AUTH ── (admin login only when opened via Admin button)
   function handleLogin() {
@@ -358,8 +431,8 @@ export default function App() {
 
   // ── WITHDRAW ──
   function handleWithdraw() {
-    const amt = parseInt(withdrawAmt);
-    if (!amt || amt <= 0) return showToast("Enter a valid amount", "warn");
+    const amt = withdrawAmt === "" || withdrawAmt === null ? NaN : parseInt(withdrawAmt, 10);
+    if (isNaN(amt) || amt < 0) return showToast("Enter a valid amount", "warn");
     const wk        = state.weeks[state.currentWeek - 1];
     const remaining = WEEKLY_ALLOW - wk.withdrawn;
     if (amt > remaining) return showToast(`Only Rs.${remaining.toLocaleString()} left this week`, "warn");
@@ -369,7 +442,8 @@ export default function App() {
       return { ...prev, weeks, totalWithdrawn: prev.totalWithdrawn + amt };
     });
     setWithdrawAmt("");
-    showToast(`Rs.${amt.toLocaleString()} withdrawn`, "success");
+    if (amt === 0) showToast("Rs.0 — saving for reward!", "success");
+    else showToast(`Rs.${amt.toLocaleString()} withdrawn`, "success");
   }
 
   // ── ADVANCE WEEK ──
@@ -474,6 +548,20 @@ export default function App() {
   const isLastWeekOfMon = isMonthEnd(cw);
   const weekInMonth     = ((cw - 1) % WEEKS_PER_MON) + 1; // 1–4
 
+  // Final week projection: how much can they withdraw and keep 100%? What if they use full allowance?
+  const finalWeekMaxSafeWithdraw = isLastWeekOfMon ? Math.min(weekRemaining, Math.max(0, 6000 - monthSpend)) : 0;
+  const monthSpendIfFullWeek     = monthSpend + weekRemaining;
+  const rewardIfFullWeek        = calcReward(monthSpendIfFullWeek);
+  const pctIfFullWeek           = Math.round((rewardIfFullWeek / MAX_REWARD) * 100);
+
+  // Remaining allowance in month (this week left + all future weeks in this month)
+  const remainingWeeksInMonth   = 4 - weekInMonth;
+  const remainingAllowanceMonth  = weekRemaining + remainingWeeksInMonth * WEEKLY_ALLOW;
+  const maxWithdrawFor100       = Math.max(0, Math.min(6000 - monthSpend, remainingAllowanceMonth));
+  const maxWithdrawFor75        = Math.max(0, Math.min(6500 - monthSpend, remainingAllowanceMonth));
+  const maxWithdrawFor50        = Math.max(0, Math.min(7000 - monthSpend, remainingAllowanceMonth));
+  const maxWithdrawFor25        = Math.max(0, Math.min(7500 - monthSpend, remainingAllowanceMonth));
+
   // Previous month's unclaimed reward (to show payout banner)
   const prevMonth       = currentMonth - 1;
   const prevMonthData   = state.monthRewards[prevMonth];
@@ -497,13 +585,6 @@ export default function App() {
   const simMonthTotal  = simSpends.reduce((a, b) => a + b, 0);
   const simMonthReward = calcReward(simMonthTotal);
 
-  const scenarios = [
-    { label: "Perfect — Rs.6,000", spend: 6000 },
-    { label: "Good    — Rs.6,500", spend: 6500 },
-    { label: "Okay    — Rs.7,000", spend: 7000 },
-    { label: "Over    — Rs.7,500", spend: 7500 },
-    { label: "Max     — Rs.8,000", spend: 8000 },
-  ];
 
   // ── ADMIN LOGIN SCREEN (only when user clicked "Admin") ──
   if (showAdminLogin) return (
@@ -512,8 +593,8 @@ export default function App() {
       <div className="login-wrap">
         <div className="login-card">
           <div className="login-logo">
-            <div className="logo-ring"><Lock size={26} color="var(--accent)" /></div>
-            <h1>Sparkonto</h1>
+            <div className="logo-ring"><Landmark size={26} color="var(--accent)" /></div>
+            <h1>Sparty</h1>
             <span>ADMIN ACCESS</span>
           </div>
           <div className="login-field">
@@ -561,11 +642,12 @@ export default function App() {
         <div className="header">
           <div className="header-left">
             <div style={{ width:40, height:40, borderRadius:"50%", border:"2px solid var(--accent)", display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,240,96,0.05)" }}>
-              <Lock size={16} color="var(--accent)" />
+              <Landmark size={16} color="var(--accent)" />
+              
             </div>
             <div>
-              <div className="header-title">Sparkonto</div>
-              <div className="header-sub">BLOCKED SAVINGS VAULT</div>
+              <div className="header-title">Sparty</div>
+              <div className="header-sub">BLOCKED SAVINGS</div>
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -634,13 +716,81 @@ export default function App() {
 
               {/* ─ END OF MONTH WARNING ─ */}
               {isLastWeekOfMon && (
-                <div className="info-box info" style={{ animation:"slideUp .3s ease" }}>
-                  <Sparkles size={14} style={{ flexShrink:0, marginTop:1 }}/>
-                  <span>
-                    This is Week 4 of Month {currentMonth} — the final week.
-                    Monthly spend so far: Rs.{monthSpend.toLocaleString()}.
-                    On-track reward: <strong style={{ color:"var(--accent)" }}>Rs.{monthReward.toLocaleString()}</strong> ({monthRewardPct}%)
-                  </span>
+                <div className="final-week-card" style={{
+                  display:"flex", flexDirection:"column",
+                  background:"linear-gradient(135deg, rgba(96,200,240,0.07) 0%, rgba(200,240,96,0.05) 100%)",
+                  border:"1px solid rgba(96,200,240,0.25)", borderRadius:"var(--radius)",
+                  animation:"slideUp .3s ease", overflow:"hidden", position:"relative"
+                }}>
+                  {/* Glow blob */}
+                  <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+                    background:"radial-gradient(ellipse 60% 80% at 50% -10%, rgba(96,200,240,0.08), transparent)" }} />
+
+                  {/* Top row: Spent | Center label | Reward */}
+                  <div className="final-week-grid">
+                    {/* Left — spent */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:4, position:"relative" }}>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, letterSpacing:2, color:"var(--text2)", textTransform:"uppercase" }}>Spent</span>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:34, fontWeight:800, color:"var(--warn)", lineHeight:1, letterSpacing:"-0.5px" }}>
+                        Rs.{monthSpend.toLocaleString()}
+                      </span>
+                      <div style={{ marginTop:6, height:4, background:"var(--surface2)", borderRadius:99, maxWidth:120 }}>
+                        <div style={{ height:"100%", borderRadius:99, width:`${Math.min((monthSpend/8000)*100,100)}%`,
+                          background: monthSpend<=6000?"var(--accent)":monthSpend<=7000?"var(--warn)":"var(--danger)",
+                          transition:"width .6s" }} />
+                      </div>
+                    </div>
+
+                    {/* Center label — hidden on mobile via CSS */}
+                    <div className="final-week-center">
+                      <Sparkles size={20} color="var(--accent2)" />
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:800, letterSpacing:2, color:"var(--accent2)", textTransform:"uppercase", whiteSpace:"nowrap" }}>
+                        Final Week
+                      </span>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:600, color:"var(--text2)", letterSpacing:1 }}>
+                        M{currentMonth} · W4
+                      </span>
+                    </div>
+
+                    {/* Right — reward */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:4, alignItems:"flex-end", position:"relative" }}>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, letterSpacing:2, color:"var(--text2)", textTransform:"uppercase" }}>Reward</span>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:34, fontWeight:800, lineHeight:1, letterSpacing:"-0.5px",
+                        color: monthReward>=3000?"var(--accent)":monthReward>=1000?"var(--warn)":"var(--danger)" }}>
+                        Rs.{monthReward.toLocaleString()}
+                      </span>
+                      <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700,
+                        color: monthReward>=3000?"var(--accent)":monthReward>=1000?"var(--warn)":"var(--danger)", opacity:0.9 }}>
+                        {monthRewardPct}% now
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Projection strip */}
+                  <div className="final-week-proj" style={{ position:"relative" }}>
+                    {monthSpend <= 6000 && (
+                      <div className="final-week-proj-row">
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>To keep 100% reward:</span>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--accent)", fontWeight:800 }}>
+                          withdraw ≤ Rs.{finalWeekMaxSafeWithdraw.toLocaleString()} this week
+                        </span>
+                      </div>
+                    )}
+                    {monthSpend > 6000 && (
+                      <div className="final-week-proj-row">
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>100% reward no longer possible this month</span>
+                      </div>
+                    )}
+                    {weekRemaining > 0 && (
+                      <div className="final-week-proj-row">
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, color:"var(--text2)", fontWeight:600 }}>If you use full Rs.{weekRemaining.toLocaleString()} left:</span>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:800,
+                          color: rewardIfFullWeek>=3000?"var(--accent)":rewardIfFullWeek>=1000?"var(--warn)":"var(--danger)" }}>
+                          {pctIfFullWeek}% → Rs.{rewardIfFullWeek.toLocaleString()} reward
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -674,7 +824,7 @@ export default function App() {
 
                   <div className="withdraw-section" style={{ width:"100%" }}>
                     <div className="withdraw-input-row">
-                      <input className="withdraw-input" type="number" placeholder="Amount to withdraw"
+                      <input className="withdraw-input" type="number" min={0} placeholder="Amount (0 to save for reward)"
                         value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && handleWithdraw()} max={weekRemaining} />
                       <button className="withdraw-btn" onClick={handleWithdraw} disabled={weekRemaining <= 0}>
@@ -736,15 +886,42 @@ export default function App() {
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:16 }}>
                       <div>
                         <div className="card-label">PROJECTED BONUS</div>
-                        <div style={{ fontSize:28, fontWeight:800,   letterSpacing:-1, color: monthReward >= 3000 ? "var(--accent)" : monthReward >= 1500 ? "var(--warn)" : "var(--danger)" }}>
+                        <div style={{ fontFamily:"var(--font-display)", fontSize:28, fontWeight:800, letterSpacing:-1, color: monthReward >= 3000 ? "var(--accent)" : monthReward >= 1500 ? "var(--warn)" : "var(--danger)" }}>
                           Rs.{monthReward.toLocaleString()}
                         </div>
                       </div>
                       <div style={{ textAlign:"right" }}>
                         <div className="card-label">EFFICIENCY</div>
-                        <div style={{ fontSize:28, fontWeight:800,   letterSpacing:-1, color:"var(--accent2)" }}>{monthRewardPct}%</div>
+                        <div style={{ fontFamily:"var(--font-display)", fontSize:28, fontWeight:800, letterSpacing:-1, color:"var(--accent2)" }}>{monthRewardPct}%</div>
+                        <div style={{ fontFamily:"var(--font-display)", fontSize:10, color:"var(--text2)", marginTop:2 }}>at current spend</div>
                       </div>
                     </div>
+
+                    {/* Suggestion: withdraw ≤ X in remaining weeks → 100% / 75% / 50% / 25% (weeks 1–3 only) */}
+                    {weekInMonth < 4 && remainingAllowanceMonth > 0 && (
+                      <div style={{
+                        marginBottom:16, padding:"12px 16px", background:"rgba(96,200,240,0.06)", border:"1px solid rgba(96,200,240,0.18)", borderRadius:10,
+                        fontFamily:"var(--font-display)"
+                      }}>
+                        <div style={{ fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--accent2)", marginBottom:10, textTransform:"uppercase" }}>
+                          In remaining weeks (W{weekInMonth} left + {remainingWeeksInMonth} more): withdraw ≤
+                        </div>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:10, alignItems:"center" }}>
+                          {maxWithdrawFor100 > 0 && (
+                            <span style={{ fontSize:12, fontWeight:700 }}><span style={{ color:"var(--accent)" }}>Rs.{maxWithdrawFor100.toLocaleString()}</span> → 100%</span>
+                          )}
+                          {maxWithdrawFor75 > 0 && (
+                            <span style={{ fontSize:12, fontWeight:700 }}><span style={{ color:"var(--warn)" }}>Rs.{maxWithdrawFor75.toLocaleString()}</span> → 75%</span>
+                          )}
+                          {maxWithdrawFor50 > 0 && (
+                            <span style={{ fontSize:12, fontWeight:700 }}><span style={{ color:"var(--warn)" }}>Rs.{maxWithdrawFor50.toLocaleString()}</span> → 50%</span>
+                          )}
+                          {maxWithdrawFor25 > 0 && (
+                            <span style={{ fontSize:12, fontWeight:700 }}><span style={{ color:"var(--danger)" }}>Rs.{maxWithdrawFor25.toLocaleString()}</span> → 25%</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Week-by-week breakdown of this month */}
                     <div style={{ display:"flex", gap:6, marginBottom:14 }}>
@@ -830,120 +1007,125 @@ export default function App() {
               MONTHLY LEDGER (new tab)
           ══════════════════════════════════════ */}
           {tab === "ledger" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
 
-              {/* Unclaimed rewards alerts */}
-              {Object.entries(state.monthRewards).filter(([,v]) => !v.claimed && v.reward > 0).map(([m, v]) => (
-                <div key={m} className="reward-banner">
-                  <div className="reward-banner-icon"><PartyPopper size={22} color="var(--reward)"/></div>
-                  <div className="reward-banner-body">
-                    <div className="reward-banner-title">Month {m} Reward Pending</div>
-                    <div className="reward-banner-sub">
-                      Monthly spend Rs.{v.spend?.toLocaleString()} → reward rate {Math.round((v.reward/MAX_REWARD)*100)}%
+              {/* Summary strip */}
+              {completedMonths.length > 0 && (
+                <div className="grid-4">
+                  {[
+                    { label:"TOTAL SPENT",   val:`Rs.${completedMonths.reduce((s,r)=>s+r.spend,0).toLocaleString()}`,  color:"var(--warn)" },
+                    { label:"TOTAL REWARDS", val:`Rs.${completedMonths.reduce((s,r)=>s+r.reward,0).toLocaleString()}`, color:"var(--reward)" },
+                    { label:"CLAIMED",       val:`Rs.${state.totalRewardsClaimed.toLocaleString()}`,                   color:"var(--accent)" },
+                    { label:"UNCLAIMED",     val:`Rs.${(completedMonths.reduce((s,r)=>s+r.reward,0)-state.totalRewardsClaimed).toLocaleString()}`, color:"var(--accent2)" },
+                  ].map(item => (
+                    <div key={item.label} style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, padding:"16px 20px" }}>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase", marginBottom:6 }}>{item.label}</div>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color:item.color }}>{item.val}</div>
                     </div>
-                    <button className="reward-claim-btn" onClick={() => claimReward(parseInt(m))}>
-                      <ArrowDownToLine size={14}/> Claim Rs.{v.reward.toLocaleString()}
-                    </button>
-                  </div>
-                  <div className="reward-banner-amount">Rs.{v.reward.toLocaleString()}</div>
+                  ))}
                 </div>
-              ))}
+              )}
 
-              {/* Full month-by-month ledger */}
-              <div className="card">
-                <div className="section-title"><BarChart2 size={13}/> Month-by-Month Ledger</div>
+              {/* Month cards */}
+              {completedMonths.length === 0 && (
+                <div className="card" style={{ textAlign:"center", padding:"48px 28px" }}>
+                  <BarChart2 size={32} color="var(--border)" style={{ margin:"0 auto 12px" }}/>
+                  <div style={{ fontFamily:"var(--font-display)", fontSize:14, color:"var(--text2)" }}>No completed months yet</div>
+                  <div style={{ fontFamily:"var(--font-display)", fontSize:12, color:"var(--text2)", marginTop:4, opacity:0.6 }}>Advance through Week 4 to see your first month's payout</div>
+                </div>
+              )}
 
-                {completedMonths.length === 0 && (
-                  <div style={{ fontFamily:"var(--font-mono)", fontSize:12, color:"var(--text2)", padding:"20px 0", textAlign:"center" }}>
-                    No completed months yet. Advance through Week 4 to see your first month's payout.
-                  </div>
-                )}
-
-                {completedMonths.length > 0 && (
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>MONTH</th>
-                          <th>W1 SPEND</th>
-                          <th>W2 SPEND</th>
-                          <th>W3 SPEND</th>
-                          <th>W4 SPEND</th>
-                          <th>TOTAL SPENT</th>
-                          <th>REWARD</th>
-                          <th>RATE</th>
-                          <th>STATUS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {completedMonths.map(row => {
-                          const mw = state.weeks.filter(w => w.month === row.month);
-                          const mr = state.monthRewards[row.month];
-                          return (
-                            <tr key={row.month} className="month-ledger-row-complete">
-                              <td style={{ fontWeight:700,   fontFamily:"var(--font-mono)" }}>M{row.month}</td>
-                              {mw.map(w => (
-                                <td key={w.week} className={w.withdrawn <= 1500 ? "td-accent" : w.withdrawn < WEEKLY_ALLOW ? "td-warn" : "td-muted"}
-                                  style={{ fontFamily:"var(--font-mono)" }}>
-                                  Rs.{w.withdrawn.toLocaleString()}
-                                  {w.withdrawn <= 1500 && <span style={{ fontSize:9, marginLeft:4 }}>✓</span>}
-                                </td>
-                              ))}
-                              <td className="td-warn" style={{ fontFamily:"var(--font-mono)", fontWeight:600 }}>Rs.{row.spend.toLocaleString()}</td>
-                              <td className="td-reward" style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>+ Rs.{row.reward.toLocaleString()}</td>
-                              <td style={{ fontFamily:"var(--font-mono)", color: row.rewardPct===100?"var(--accent)":row.rewardPct>50?"var(--warn)":"var(--danger)" }}>
-                                {row.rewardPct}%
-                              </td>
-                              <td>
-                                {mr?.claimed
-                                  ? <span className="payout-chip payout-chip-yes"><CheckCircle size={10}/> CLAIMED</span>
-                                  : row.reward > 0
-                                  ? <button onClick={() => claimReward(row.month)} className="reward-claim-btn" style={{ padding:"5px 12px", fontSize:11, marginTop:0 }}>
-                                      <Gift size={11}/> Claim
-                                    </button>
-                                  : <span className="payout-chip payout-chip-no">No Reward</span>
-                                }
-                              </td>
-                            </tr>
-                          );
-                        })}
-
-                        {/* Current month (in progress) */}
-                        <tr className="month-ledger-row-active">
-                          <td style={{ fontWeight:700,   fontFamily:"var(--font-mono)", color:"var(--accent2)" }}>M{currentMonth} ◀</td>
-                          {monthWeeks.map(w => (
-                            <td key={w.week} style={{ fontFamily:"var(--font-mono)", color: w.week===cw?"var(--accent2)":"var(--text2)" }}>
-                              {w.completed || w.week===cw ? `Rs.${w.withdrawn.toLocaleString()}` : "—"}
-                              {w.week===cw && <span style={{ fontSize:9, marginLeft:4, color:"var(--accent2)" }}>NOW</span>}
-                            </td>
-                          ))}
-                          <td style={{ fontFamily:"var(--font-mono)", color:"var(--accent2)" }}>Rs.{monthSpend.toLocaleString()}</td>
-                          <td className="td-reward" style={{ fontFamily:"var(--font-mono)" }}>~ Rs.{monthReward.toLocaleString()}</td>
-                          <td style={{ fontFamily:"var(--font-mono)", color:"var(--accent2)" }}>{monthRewardPct}%</td>
-                          <td><span className="payout-chip payout-chip-pending">IN PROGRESS</span></td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Summary row */}
-                {completedMonths.length > 0 && (
-                  <div style={{ marginTop:20, display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12 }}>
-                    {[
-                      { label:"TOTAL SPENT",     val:`Rs.${completedMonths.reduce((s,r)=>s+r.spend,0).toLocaleString()}`,   color:"var(--warn)" },
-                      { label:"TOTAL REWARDS",   val:`Rs.${completedMonths.reduce((s,r)=>s+r.reward,0).toLocaleString()}`, color:"var(--reward)" },
-                      { label:"CLAIMED",         val:`Rs.${state.totalRewardsClaimed.toLocaleString()}`,                    color:"var(--accent)" },
-                      { label:"UNCLAIMED",       val:`Rs.${(completedMonths.reduce((s,r)=>s+r.reward,0) - state.totalRewardsClaimed).toLocaleString()}`, color:"var(--accent2)" },
-                    ].map(item => (
-                      <div key={item.label} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:10, padding:"16px 18px" }}>
-                        <div className="card-label">{item.label}</div>
-                        <div style={{ fontSize:20, fontWeight:800,   color:item.color, marginTop:4 }}>{item.val}</div>
+              {[...completedMonths, { month: currentMonth, spend: monthSpend, reward: monthReward, rewardPct: monthRewardPct, claimed: false, inProgress: true }].map(row => {
+                const mw  = state.weeks.filter(w => w.month === row.month);
+                const mr  = state.monthRewards[row.month];
+                const rPct = row.rewardPct ?? Math.round((row.reward / MAX_REWARD) * 100);
+                const rewardColor = row.reward >= 3000 ? "var(--accent)" : row.reward >= 1000 ? "var(--warn)" : "var(--danger)";
+                return (
+                  <div key={row.month} style={{
+                    background:"var(--surface)", border:`1px solid ${row.inProgress ? "rgba(96,200,240,0.3)" : mr?.claimed ? "rgba(200,240,96,0.15)" : "var(--border)"}`,
+                    borderRadius:"var(--radius)", padding:"20px 24px", display:"flex", flexDirection:"column", gap:14
+                  }}>
+                    {/* Header row */}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                        <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color: row.inProgress ? "var(--accent2)" : "var(--text)" }}>
+                          Month {row.month}
+                        </div>
+                        {row.inProgress
+                          ? <span className="payout-chip payout-chip-pending">IN PROGRESS</span>
+                          : mr?.claimed
+                          ? <span className="payout-chip payout-chip-yes"><CheckCircle size={10}/> CLAIMED</span>
+                          : row.reward > 0
+                          ? <span className="payout-chip payout-chip-pending">UNCLAIMED</span>
+                          : <span className="payout-chip payout-chip-no">NO REWARD</span>
+                        }
                       </div>
-                    ))}
+                      {/* Reward + claim */}
+                      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                        <div style={{ textAlign:"right" }}>
+                          <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase" }}>
+                            {row.inProgress ? "Est. Reward" : "Reward"}
+                          </div>
+                          <div style={{ fontFamily:"var(--font-display)", fontSize:26, fontWeight:800, color: rewardColor, lineHeight:1 }}>
+                            {row.inProgress ? "~" : ""}Rs.{row.reward.toLocaleString()}
+                          </div>
+                          <div style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, color: rewardColor, opacity:0.8 }}>
+                            {rPct}% efficiency
+                          </div>
+                        </div>
+                        {!row.inProgress && !mr?.claimed && row.reward > 0 && (
+                          <button className="reward-claim-btn" onClick={() => claimReward(row.month)} style={{ marginTop:0 }}>
+                            <ArrowDownToLine size={13}/> Claim
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Week pills */}
+                    <div style={{ display:"flex", gap:8 }}>
+                      {mw.map(w => {
+                        const isCurWk  = w.week === cw;
+                        const done     = w.completed;
+                        const saved    = done && w.withdrawn <= 1500;
+                        const partial  = done && !saved;
+                        const bg       = isCurWk ? "rgba(96,200,240,0.12)" : !done ? "var(--surface2)" : saved ? "rgba(200,240,96,0.1)" : partial ? "rgba(240,160,96,0.1)" : "rgba(240,96,96,0.1)";
+                        const border   = isCurWk ? "rgba(96,200,240,0.4)" : !done ? "var(--border)" : saved ? "rgba(200,240,96,0.3)" : partial ? "rgba(240,160,96,0.3)" : "rgba(240,96,96,0.3)";
+                        const valColor = isCurWk ? "var(--accent2)" : !done ? "var(--text2)" : saved ? "var(--accent)" : partial ? "var(--warn)" : "var(--danger)";
+                        return (
+                          <div key={w.week} style={{ flex:1, background:bg, border:`1px solid ${border}`, borderRadius:10, padding:"10px 12px", display:"flex", flexDirection:"column", gap:3 }}>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase" }}>
+                              W{w.week}{isCurWk ? " ◀" : ""}
+                            </div>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:15, fontWeight:800, color:valColor }}>
+                              {done || isCurWk ? `Rs.${w.withdrawn.toLocaleString()}` : "—"}
+                            </div>
+                            {done && (
+                              <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, color:valColor, opacity:0.8 }}>
+                                {saved ? "saved ✓" : partial ? "partial" : "full"}
+                              </div>
+                            )}
+                            {isCurWk && !done && (
+                              <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, color:"var(--accent2)" }}>now</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Spend bar */}
+                    <div>
+                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)", fontWeight:600 }}>MONTHLY SPEND</span>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:800, color:"var(--warn)" }}>Rs.{row.spend.toLocaleString()} / Rs.8,000</span>
+                      </div>
+                      <div style={{ height:5, background:"var(--surface2)", borderRadius:99 }}>
+                        <div style={{ height:"100%", borderRadius:99, width:`${Math.min((row.spend/8000)*100,100)}%`,
+                          background: row.spend<=6000?"var(--accent)":row.spend<=7000?"var(--warn)":"var(--danger)", transition:"width .6s" }} />
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
           )}
 
@@ -1091,112 +1273,132 @@ export default function App() {
               REWARDS / PROJECTION
           ══════════════════════════════════════ */}
           {tab === "projection" && (
-            <>
-              <div className="card" style={{ marginBottom:24 }}>
-                <div className="section-title"><TrendingUp size={13}/> 6-Month Perfect Savings Projection</div>
-                <div className="info-box info" style={{ marginBottom:20 }}>
-                  <Gift size={13} style={{ flexShrink:0 }}/>
-                  <span>Spend Rs.1,500/week × 4 = Rs.6,000/month → receive Rs.4,000 reward at end of each month's 4th week</span>
-                </div>
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr><th>MONTH</th><th>W1</th><th>W2</th><th>W3</th><th>W4 (PAYOUT)</th><th>SPENT</th><th>REWARD</th><th>CUMUL. SPENT</th><th>CUMUL. REWARDS</th><th>TOTAL IN HAND</th></tr>
-                    </thead>
-                    <tbody>
-                      {Array.from({length:6},(_,i)=>{
-                        const m   = i+1;
-                        const cs  = m*6000;
-                        const cr  = m*4000;
-                        return (
-                          <tr key={m}>
-                            <td style={{ fontFamily:"var(--font-mono)", color:"var(--text2)" }}>M{m}</td>
-                            {[1500,1500,1500,1500].map((v,j) => <td key={j} className="td-accent" style={{ fontFamily:"var(--font-mono)" }}>Rs.{v.toLocaleString()}</td>)}
-                            <td className="td-warn"   style={{ fontFamily:"var(--font-mono)" }}>Rs.6,000</td>
-                            <td className="td-reward" style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>+ Rs.4,000</td>
-                            <td style={{ fontFamily:"var(--font-mono)" }}>Rs.{cs.toLocaleString()}</td>
-                            <td className="td-accent2" style={{ fontFamily:"var(--font-mono)" }}>Rs.{cr.toLocaleString()}</td>
-                            <td style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.{(cs+cr).toLocaleString()}</td>
-                          </tr>
-                        );
-                      })}
-                      <tr style={{ borderTop:"1px solid var(--border)" }}>
-                        <td style={{ fontFamily:"var(--font-mono)", fontWeight:700}}>6-Mo Total</td>
-                        <td colSpan={4} style={{ fontFamily:"var(--font-mono)", color:"var(--text2)", fontSize:11 }}>All weeks @ Rs.1,500</td>
-                        <td className="td-warn"   style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.36,000</td>
-                        <td className="td-reward" style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.24,000</td>
-                        <td style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.36,000</td>
-                        <td className="td-accent2" style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.24,000</td>
-                        <td style={{ fontFamily:"var(--font-mono)", fontWeight:700 }}>Rs.60,000</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{ marginTop:14, fontFamily:"var(--font-mono)", fontSize:11, color:"var(--text2)", lineHeight:1.9 }}>
-                  6 months of perfect savings: Rs.36,000 spent + Rs.24,000 rewards =
-                  <strong style={{ color:"var(--accent)" }}> Rs.60,000 in hand</strong>. 
-                  That's a <strong style={{ color:"var(--accent)" }}>66.7% bonus</strong> on actual spend — 
-                  all within the Rs.1,20,000 annual budget.
-                </div>
-              </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
-              {/* Reward scale */}
+              {/* Perfect savings: 6 month cards */}
               <div className="card">
-                <div className="section-title"><Gift size={13}/> Monthly Reward Scale</div>
-                <div style={{ fontFamily:"var(--font-mono)", fontSize:11, color:"var(--text2)", marginBottom:16, lineHeight:1.7 }}>
-                  Spend Rs.6k → full Rs.4k reward. Spend Rs.8k → zero reward. Anything between scales linearly.
-                  Reward is paid out at the end of the 4th week of each month.
+                <div className="section-title"><TrendingUp size={13}/> Perfect Savings — 6 Month Projection</div>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20, padding:"12px 16px", background:"rgba(96,200,240,0.06)", border:"1px solid rgba(96,200,240,0.18)", borderRadius:10 }}>
+                  <Gift size={14} color="var(--accent2)" style={{ flexShrink:0 }}/>
+                  <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:600, color:"var(--text2)" }}>
+                    Spend ≤ Rs.1,500/week × 4 weeks = Rs.6,000/month → earn Rs.4,000 bonus at month end
+                  </span>
                 </div>
-                <div className="reward-scenarios">
-                  {scenarios.map(s => {
-                    const reward = calcReward(s.spend);
-                    const pct    = Math.round((reward/MAX_REWARD)*100);
+                <div className="grid-3" style={{ marginBottom:20 }}>
+                  {Array.from({length:6},(_,i) => {
+                    const m  = i+1;
+                    const cs = m * 6000;
+                    const cr = m * 4000;
                     return (
-                      <div className="scenario-row" key={s.spend}>
-                        <div style={{ flex:1 }}>
-                          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                            <span className="scenario-spend">{s.label}</span>
-                            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                              <span style={{ fontFamily:"var(--font-mono)", fontSize:13, fontWeight:600, color: reward===0?"var(--danger)":reward>=3000?"var(--reward)":"var(--warn)" }}>
-                                Rs.{reward.toLocaleString()} reward
-                              </span>
-                              <span className="scenario-pct">{pct}%</span>
+                      <div key={m} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:12, padding:"18px 20px", display:"flex", flexDirection:"column", gap:10 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                          <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:800, color:"var(--text2)" }}>Month {m}</span>
+                          <span style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, color:"var(--accent)", background:"rgba(200,240,96,0.1)", border:"1px solid rgba(200,240,96,0.2)", borderRadius:20, padding:"2px 10px" }}>+Rs.4,000</span>
+                        </div>
+                        {/* 4 week dots */}
+                        <div style={{ display:"flex", gap:4 }}>
+                          {[1,2,3,4].map(w => (
+                            <div key={w} style={{ flex:1, display:"flex", flexDirection:"column", gap:3, alignItems:"center" }}>
+                              <div style={{ width:"100%", height:6, borderRadius:3, background:"var(--accent)", opacity:0.7 }} />
+                              <span style={{ fontFamily:"var(--font-display)", fontSize:9, color:"var(--text2)" }}>Rs.1,500</span>
                             </div>
+                          ))}
+                        </div>
+                        <div style={{ height:1, background:"var(--border)" }} />
+                        <div style={{ display:"flex", justifyContent:"space-between" }}>
+                          <div>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:9, color:"var(--text2)", letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>Cumul. Spent</div>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:14, fontWeight:800, color:"var(--warn)" }}>Rs.{cs.toLocaleString()}</div>
                           </div>
-                          <div className="progress-track">
-                            <div className="progress-fill" style={{ width:`${pct}%`, background: reward===0?"var(--danger)":reward>=3000?"var(--accent)":"var(--warn)" }}/>
+                          <div style={{ textAlign:"right" }}>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:9, color:"var(--text2)", letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>In Hand</div>
+                            <div style={{ fontFamily:"var(--font-display)", fontSize:14, fontWeight:800, color:"var(--accent)" }}>Rs.{(cs+cr).toLocaleString()}</div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-
-                <div className="divider"/>
-
-                <div className="section-title"><AlertCircle size={13}/> Mixed Month Example</div>
-                <div style={{ fontFamily:"var(--font-mono)", fontSize:11, color:"var(--text2)", marginBottom:14, lineHeight:1.9 }}>
-                  W1: Rs.2,000 (no save) · W2: Rs.1,500 (saved Rs.500) · W3: Rs.2,000 (no save) · W4: Rs.1,500 (saved Rs.500)
+                {/* 6-month totals */}
+                <div className="grid-3">
+                  {[
+                    { label:"6-Mo Spent",   val:"Rs.36,000", color:"var(--warn)" },
+                    { label:"6-Mo Rewards", val:"Rs.24,000", color:"var(--reward)" },
+                    { label:"Total in Hand",val:"Rs.60,000", color:"var(--accent)" },
+                  ].map(x => (
+                    <div key={x.label} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:10, padding:"14px 18px" }}>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase", marginBottom:4 }}>{x.label}</div>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color:x.color }}>{x.val}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="scenario-row" style={{ background:"rgba(96,200,240,.04)", borderColor:"rgba(96,200,240,.15)" }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                      <span className="scenario-spend" style={{ color:"var(--accent2)" }}>Total: Rs.7,000 spent → reward unlocks at Week 4</span>
-                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <span style={{ fontFamily:"var(--font-mono)", fontSize:13, fontWeight:600, color:"var(--warn)" }}>Rs.{calcReward(7000).toLocaleString()} payout</span>
-                        <span className="scenario-pct">{Math.round((calcReward(7000)/MAX_REWARD)*100)}%</span>
+                <div style={{ marginTop:14, fontFamily:"var(--font-display)", fontSize:12, color:"var(--text2)", lineHeight:1.8 }}>
+                  That's a <strong style={{ color:"var(--accent)" }}>66.7% bonus</strong> on actual spend — all within the Rs.1,20,000 annual budget.
+                </div>
+              </div>
+
+              {/* Reward scale */}
+              <div className="card">
+                <div className="section-title"><Gift size={13}/> Monthly Reward Scale</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {[
+                    { spend:6000, label:"Rs.6,000", tag:"Perfect" },
+                    { spend:6500, label:"Rs.6,500", tag:"Good" },
+                    { spend:7000, label:"Rs.7,000", tag:"Okay" },
+                    { spend:7500, label:"Rs.7,500", tag:"Over" },
+                    { spend:8000, label:"Rs.8,000", tag:"Max" },
+                  ].map(s => {
+                    const reward = calcReward(s.spend);
+                    const pct    = Math.round((reward/MAX_REWARD)*100);
+                    const barColor = reward===0?"var(--danger)":reward>=3000?"var(--accent)":"var(--warn)";
+                    const rewardColor = reward===0?"var(--danger)":reward>=3000?"var(--reward)":"var(--warn)";
+                    return (
+                      <div key={s.spend} style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:12, padding:"16px 20px" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                            <span style={{ fontFamily:"var(--font-display)", fontSize:18, fontWeight:800, color:"var(--warn)" }}>{s.label}</span>
+                            <span style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, color:"var(--text2)", background:"var(--surface)", border:"1px solid var(--border)", borderRadius:20, padding:"2px 10px", letterSpacing:1 }}>{s.tag}</span>
+                          </div>
+                          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                            <span style={{ fontFamily:"var(--font-display)", fontSize:18, fontWeight:800, color:rewardColor }}>Rs.{reward.toLocaleString()}</span>
+                            <span style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:700, color:rewardColor, opacity:0.7, minWidth:36, textAlign:"right" }}>{pct}%</span>
+                          </div>
+                        </div>
+                        <div style={{ height:6, background:"var(--surface)", borderRadius:99 }}>
+                          <div style={{ height:"100%", borderRadius:99, width:`${pct}%`, background:barColor, transition:"width .6s" }} />
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ height:1, background:"var(--border)", margin:"20px 0" }} />
+
+                {/* Mixed month example */}
+                <div style={{ fontFamily:"var(--font-display)", fontSize:13, fontWeight:700, color:"var(--text)", marginBottom:14, display:"flex", alignItems:"center", gap:8 }}>
+                  <AlertCircle size={14} color="var(--accent2)"/> Mixed Month Example
+                </div>
+                <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+                  {[{w:1,amt:2000,saved:false},{w:2,amt:1500,saved:true},{w:3,amt:2000,saved:false},{w:4,amt:1500,saved:true}].map(x => (
+                    <div key={x.w} style={{ flex:1, background: x.saved?"rgba(200,240,96,0.08)":"rgba(240,96,96,0.08)", border:`1px solid ${x.saved?"rgba(200,240,96,0.25)":"rgba(240,96,96,0.2)"}`, borderRadius:10, padding:"12px 14px" }}>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:9, fontWeight:700, letterSpacing:1.5, color:"var(--text2)", textTransform:"uppercase", marginBottom:4 }}>W{x.w}</div>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:16, fontWeight:800, color: x.saved?"var(--accent)":"var(--danger)" }}>Rs.{x.amt.toLocaleString()}</div>
+                      <div style={{ fontFamily:"var(--font-display)", fontSize:10, fontWeight:700, color: x.saved?"var(--accent)":"var(--danger)", opacity:0.8, marginTop:2 }}>{x.saved?"saved ✓":"no save"}</div>
                     </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width:`${Math.round((calcReward(7000)/MAX_REWARD)*100)}%`, background:"var(--warn)"}}/>
-                    </div>
-                    <div style={{ fontFamily:"var(--font-mono)", fontSize:10, color:"var(--text2)", marginTop:8 }}>
-                      2/4 weeks met Rs.500 savings target → Rs.{calcReward(7000).toLocaleString()} partial payout (vs full Rs.{MAX_REWARD.toLocaleString()})
-                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", background:"rgba(96,200,240,0.06)", border:"1px solid rgba(96,200,240,0.18)", borderRadius:10 }}>
+                  <div>
+                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)", marginBottom:2 }}>Total spend: <strong style={{ color:"var(--accent2)" }}>Rs.7,000</strong> · 2/4 weeks saved</div>
+                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, color:"var(--text2)" }}>vs full reward target of Rs.6,000</div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontFamily:"var(--font-display)", fontSize:22, fontWeight:800, color:"var(--warn)" }}>Rs.{calcReward(7000).toLocaleString()}</div>
+                    <div style={{ fontFamily:"var(--font-display)", fontSize:11, fontWeight:700, color:"var(--warn)", opacity:0.8 }}>{Math.round((calcReward(7000)/MAX_REWARD)*100)}% payout</div>
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
