@@ -7,6 +7,7 @@ import {
   Instagram, Youtube, Linkedin, Github
 } from "lucide-react";
 import { supabaseSelect, supabaseUpsert } from "./utils/supabaseClient";
+import SettingsDialog from "./SettingsDialog";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const TOTAL_BUDGET   = 120000;
@@ -77,6 +78,10 @@ const GlobalStyles = () => (
       --font-display: 'Noto Sans Devanagari', sans-serif;
       --font-mono: 'Noto Sans Devanagari', sans-serif;
     }
+    .app.font-size-big { zoom: 1.25; }
+    .badge-user-clickable { cursor: pointer; transition: box-shadow .15s ease, transform .1s ease; }
+    .badge-user-clickable:hover { box-shadow: 0 0 14px rgba(200,240,96,0.25); }
+    .badge-user-clickable:active { box-shadow: 0 0 22px rgba(200,240,96,0.5); transform: scale(0.98); }
 
     /* LOGIN */
     .login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse 60% 60% at 50% 30%, #1a1a2e 0%, var(--bg) 70%); }
@@ -441,6 +446,20 @@ export default function App() {
   const [lang,       setLang]       = useState("en");
   const [toast,      setToast]      = useState(null);
   const [hydrated,   setHydrated]   = useState(false); // has initial load from Supabase run?
+  const [showSettings, setShowSettings] = useState(false);
+  const [fontSize,   setFontSize]   = useState(() => (typeof localStorage !== "undefined" && localStorage.getItem("sparty_font_size")) || "small");
+
+  const handleFontSizeChange = useCallback((value) => {
+    setFontSize(value);
+    try { localStorage.setItem("sparty_font_size", value); } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (!showSettings) return;
+    const onKey = (e) => { if (e.key === "Escape") setShowSettings(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showSettings]);
 
   // sim
   const [simActive,  setSimActive]  = useState(false);
@@ -511,7 +530,7 @@ export default function App() {
   const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN ?? "0544";
 
   // ── AUTH ── (admin login only when opened via Admin button; PIN from .env)
-  function handleLogin() {
+  const handleLogin = useCallback(() => {
     if (showAdminLogin) {
       if (loginPin === String(ADMIN_PIN)) {
         setUser("admin");
@@ -519,9 +538,13 @@ export default function App() {
         setShowAdminLogin(false);
         setLoginPin("");
       } else setLoginErr("Invalid PIN");
-      return;
     }
-  }
+  }, [showAdminLogin, loginPin, ADMIN_PIN]);
+
+  // ATM-style: enter vault as soon as PIN matches (no need to press Enter)
+  useEffect(() => {
+    if (showAdminLogin && loginPin === String(ADMIN_PIN)) handleLogin();
+  }, [loginPin, showAdminLogin, ADMIN_PIN, handleLogin]);
 
   // ── WITHDRAW ──
   function handleWithdraw() {
@@ -633,8 +656,8 @@ export default function App() {
   const cwData          = state.weeks[cw - 1] || state.weeks[0];
   const weekWithdrawn   = cwData.withdrawn;
   const weekRemaining   = WEEKLY_ALLOW - weekWithdrawn;
-  const weekPct         = (weekWithdrawn / WEEKLY_ALLOW) * 100;
-  const ringColor       = weekPct > 80 ? "var(--danger)" : weekPct > 50 ? "var(--warn)" : "var(--accent)";
+  const remainingPct    = (weekRemaining / WEEKLY_ALLOW) * 100; // circle: full = 2000 left, empty = 0 left
+  const ringColor       = remainingPct > 50 ? "var(--accent)" : remainingPct > 20 ? "var(--warn)" : "var(--danger)";
   const currentMonth    = weekMonth(cw);
   const monthWeeks      = state.weeks.filter(w => w.month === currentMonth);
   const monthSpend      = monthWeeks.reduce((a, w) => a + w.withdrawn, 0);
@@ -714,7 +737,16 @@ export default function App() {
   return (
     <>
       <GlobalStyles />
-      <div className={`app ${isNepali ? "lang-ne" : ""}`}>
+      <div className={`app ${isNepali ? "lang-ne" : ""} ${fontSize === "big" ? "font-size-big" : ""}`}>
+
+        {/* Settings dialog (open from "Hi, Dilip" click) */}
+        <SettingsDialog
+          open={showSettings}
+          onClose={() => setShowSettings(false)}
+          fontSize={fontSize}
+          onFontSizeChange={handleFontSizeChange}
+          tx={tx}
+        />
 
         {/* Toast */}
         {toast && (
@@ -745,9 +777,19 @@ export default function App() {
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {simActive && <span className="badge badge-sim">SIM · W{cw} M{currentMonth}</span>}
-            <span className={`badge ${user === "admin" ? "badge-admin" : "badge-user"}`} style={user === "user" ? { display:"inline-flex", alignItems:"center", gap:6, fontSize:14, fontWeight:700 } : {}}>
-              {user === "admin" ? "ADMIN" : <>Hi, Dilip <ScanFace size={15} /></>}
-            </span>
+            {user === "user" ? (
+              <button
+                type="button"
+                className={`badge badge-user badge-user-clickable`}
+                style={{ display:"inline-flex", alignItems:"center", gap:6, fontSize:14, fontWeight:700, border:"none", cursor:"pointer" }}
+                onClick={() => setShowSettings(true)}
+                aria-label={tx("Settings", "सेटिङ्ग")}
+              >
+                Hi, Dilip <ScanFace size={15} />
+              </button>
+            ) : (
+              <span className="badge badge-admin">ADMIN</span>
+            )}
             {user === "admin" && (
               <button className="logout-btn" onClick={() => { setUser("user"); setLoginPin(""); setShowAdminLogin(false); }}>
                 <LogOut size={13}/> {tx("Sign out", "साइन आउट")}
@@ -897,11 +939,11 @@ export default function App() {
               <div className="grid-2">
                 {/* Left — circle + withdraw */}
                 <div className="card circle-section">
-                  <CircularProgress pct={weekPct} size={210} color={ringColor}>
+                  <CircularProgress pct={remainingPct} size={210} color={ringColor}>
                     <div className="circle-main-val" style={{ color: ringColor }}>
-                      Rs.{weekWithdrawn.toLocaleString()}
+                      Rs.{weekRemaining.toLocaleString()}
                     </div>
-                    <div className="circle-main-label">{tx("WITHDRAWN", "निकालिएको")}</div>
+                    <div className="circle-main-label">{tx("REMAINING", "बाँकी")}</div>
                     <div className="circle-sub">{tx(`of Rs.${WEEKLY_ALLOW.toLocaleString()}`, `जम्मा Rs.${WEEKLY_ALLOW.toLocaleString()} मध्ये`)}</div>
                   </CircularProgress>
 
